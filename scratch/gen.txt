@@ -1,0 +1,54 @@
+new Product { ProductName = "iPhone 15 Pro Max", Price = 450000, CategoryID = electronicsId, StockQuantity = 100, Description = "Titanium design, A17 Pro chip, and most powerful iPhone camera ever.", Rating = 4.5m, TotalReviews = 234 },
+new Product { ProductName = "Samsung Galaxy S24 Ultra", Price = 285000, CategoryID = electronicsId, StockQuantity = 100, Description = "Built-in S Pen, 200MP camera, AI-powered Galaxy experience.", Rating = 4.5m, TotalReviews = 189 },
+new Product { ProductName = "MacBook Pro 14 inch", Price = 650000, CategoryID = electronicsId, StockQuantity = 100, Description = "M3 Pro chip, Liquid Retina XDR display, all-day battery life.", Rating = 4.8m, TotalReviews = 98 },
+new Product { ProductName = "Sony WH-1000XM5 Headphones", Price = 85000, CategoryID = electronicsId, StockQuantity = 100, Description = "Industry-leading noise cancellation, 30-hour battery, premium sound.", Rating = 4.7m, TotalReviews = 312 },
+new Product { ProductName = "iPad Pro 12.9 inch", Price = 380000, CategoryID = electronicsId, StockQuantity = 100, Description = "M2 chip, Liquid Retina XDR, works with Apple Pencil and Magic Keyboard.", Rating = 4.6m, TotalReviews = 145 },
+new Product { ProductName = "Samsung 55 inch 4K Smart TV", Price = 195000, CategoryID = electronicsId, StockQuantity = 100, Description = "Crystal UHD 4K, Smart TV with Alexa, HDR10+ support.", Rating = 4.4m, TotalReviews = 78 },
+new Product { ProductName = "Canon EOS R50 Camera", Price = 220000, CategoryID = electronicsId, StockQuantity = 100, Description = "24.2MP APS-C sensor, 4K video, perfect for content creators.", Rating = 4.6m, TotalReviews = 56 },
+new Product { ProductName = "Dell 27 inch Gaming Monitor", Price = 95000, CategoryID = electronicsId, StockQuantity = 100, Description = "165Hz refresh rate, 1ms response time, IPS panel, QHD resolution.", Rating = 4.5m, TotalReviews = 167 },
+new Product { ProductName = "Men's Premium Casual T-Shirt", Price = 2500, CategoryID = clothingId, StockQuantity = 100, Description = "100% cotton, breathable fabric, available in multiple colors.", Rating = 4.3m, TotalReviews = 523 },
+new Product { ProductName = "Women's Summer Floral Dress", Price = 4500, CategoryID = clothingId, StockQuantity = 100, Description = "Light floral pattern, perfect for summer, available in S/M/L/XL.", Rating = 4.5m, TotalReviews = 289 },
+new Product { ProductName = "Denim Jacket Unisex", Price = 6500, CategoryID = clothingId, StockQuantity = 100, Description = "Classic denim jacket, slim fit, vintage wash finish.", Rating = 4.4m, TotalReviews = 178 },
+new Product { ProductName = "Running Sports Sneakers", Price = 8500, CategoryID = clothingId, StockQuantity = 100, Description = "Lightweight, breathable mesh, cushioned sole for maximum comfort.", Rating = 4.6m, TotalReviews = 445 },
+new Product { ProductName = "Women's Leather Handbag", Price = 7500, CategoryID = clothingId, StockQuantity = 100, Description = "Genuine leather, multiple compartments, elegant design.", Rating = 4.4m, TotalReviews = 234 },
+new Product { ProductName = "Men's Slim Fit Formal Shirt", Price = 3200, CategoryID = clothingId, StockQuantity = 100, Description = "Premium cotton blend, wrinkle-resistant, perfect for office.", Rating = 4.3m, TotalReviews = 367 },
+new Product { ProductName = "Winter Puffer Jacket", Price = 12000, CategoryID = clothingId, StockQuantity = 100, Description = "Warm insulation, water-resistant outer shell, hood included.", Rating = 4.7m, TotalReviews = 156 },
+new Product { ProductName = "Atomic Habits - James Clear", Price = 1800, CategoryID = booksId, StockQuantity = 100, Description = "Build good habits, break bad ones. #1 New York Times bestseller.", Rating = 4.9m, TotalReviews = 892 },
+new Product { ProductName = "Rich Dad Poor Dad", Price = 1500, CategoryID = booksId, StockQuantity = 100, Description = "What the rich teach their kids about money that the poor do not.", Rating = 4.7m, TotalReviews = 743 },
+new Product { ProductName = "The Alchemist - Paulo Coelho", Price = 1200, CategoryID = booksId, StockQuantity = 100, Description = "A magical story about following your dreams and listening to your heart.", Rating = 4.8m, TotalReviews = 634 },
+new Product { ProductName = "Python Programming for Beginners", Price = 2200, CategoryID = booksId, StockQuantity = 100, Description = "Complete guide to Python, includes projects and exercises.", Rating = 4.5m, TotalReviews = 412 },
+new Product { ProductName = "The 7 Habits of Highly Effective People", Price = 1600, CategoryID = booksId, StockQuantity = 100, Description = "Powerful lessons in personal change by Stephen R. Covey.", Rating = 4.7m, TotalReviews = 567 },
+new Product { ProductName = "Ceramic Coffee Mug Set of 6", Price = 3500, CategoryID = homeId, StockQuantity = 100, Description = "Premium ceramic, dishwasher safe, beautiful minimalist design.", Rating = 4.5m, TotalReviews = 334 },
+new Product { ProductName = "LED Adjustable Desk Lamp", Price = 4500, CategoryID = homeId, StockQuantity = 100, Description = "5 color modes, touch control, USB charging port, eye-care technology.", Rating = 4.4m, TotalReviews = 223 },
+new Product { ProductName = "Smart Air Purifier", Price = 35000, CategoryID = homeId, StockQuantity = 100, Description = "HEPA filter, removes 99.9% pollutants, WiFi enabled, covers 500 sq ft.", Rating = 4.6m, TotalReviews = 89 },
+new Product { ProductName = "Luxury Throw Pillow Set of 4", Price = 5500, CategoryID = homeId, StockQuantity = 100, Description = "Soft velvet cover, hypoallergenic filling, elegant home decor.", Rating = 4.3m, TotalReviews = 178 },
+new Product { ProductName = "Stainless Steel Kitchen Knife Set", Price = 8500, CategoryID = homeId, StockQuantity = 100, Description = "Professional grade, 8-piece set, ergonomic handles, ultra-sharp blades.", Rating = 4.7m, TotalReviews = 267 },
+new Product { ProductName = "Aromatherapy Diffuser & Humidifier", Price = 6500, CategoryID = homeId, StockQuantity = 100, Description = "Essential oil diffuser, 7 LED colors, auto shut-off, 500ml capacity.", Rating = 4.5m, TotalReviews = 198 },
+
+
+if (nm == "iphone 15 pro max") return "https://images.unsplash.com/photo-1695048133142-1a20484429be?w=400&h=400&fit=crop";
+if (nm == "samsung galaxy s24 ultra") return "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=400&fit=crop";
+if (nm == "macbook pro 14 inch") return "https://images.unsplash.com/photo-1517336714731-489689fd9ca8?w=400&h=400&fit=crop";
+if (nm == "sony wh-1000xm5 headphones") return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop";
+if (nm == "ipad pro 12.9 inch") return "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=400&fit=crop";
+if (nm == "samsung 55 inch 4k smart tv") return "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400&h=400&fit=crop";
+if (nm == "canon eos r50 camera") return "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=400&h=400&fit=crop";
+if (nm == "dell 27 inch gaming monitor") return "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=400&fit=crop";
+if (nm == "men's premium casual t-shirt") return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop";
+if (nm == "women's summer floral dress") return "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=400&fit=crop";
+if (nm == "denim jacket unisex") return "https://images.unsplash.com/photo-1544966503-7cc5ac882d5d?w=400&h=400&fit=crop";
+if (nm == "running sports sneakers") return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop";
+if (nm == "women's leather handbag") return "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop";
+if (nm == "men's slim fit formal shirt") return "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=400&fit=crop";
+if (nm == "winter puffer jacket") return "https://images.unsplash.com/photo-1539533018447-63fcce2fae2e?w=400&h=400&fit=crop";
+if (nm == "atomic habits - james clear") return "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=400&fit=crop";
+if (nm == "rich dad poor dad") return "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&h=400&fit=crop";
+if (nm == "the alchemist - paulo coelho") return "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=400&fit=crop";
+if (nm == "python programming for beginners") return "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=400&h=400&fit=crop";
+if (nm == "the 7 habits of highly effective people") return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop";
+if (nm == "ceramic coffee mug set of 6") return "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&h=400&fit=crop";
+if (nm == "led adjustable desk lamp") return "https://images.unsplash.com/photo-1507473885765-e6ed9c4c7168?w=400&h=400&fit=crop";
+if (nm == "smart air purifier") return "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400&h=400&fit=crop";
+if (nm == "luxury throw pillow set of 4") return "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=400&fit=crop";
+if (nm == "stainless steel kitchen knife set") return "https://images.unsplash.com/photo-1593618998160-e34014e67546?w=400&h=400&fit=crop";
+if (nm == "aromatherapy diffuser & humidifier") return "https://images.unsplash.com/photo-1602928321679-560bb453f190?w=400&h=400&fit=crop";

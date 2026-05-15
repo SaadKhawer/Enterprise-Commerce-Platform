@@ -1,0 +1,517 @@
+@page "/reviews"
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>ShopWave — Reviews</PageTitle>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2>Reviews</h2>
+        <div class="breadcrumb">
+            Home <i class="bi bi-chevron-right"></i> <span>Reviews</span>
+        </div>
+    </div>
+    @if (AuthService.IsAdmin)
+    {
+        <div class="rev-header-actions">
+            <button class="btn btn-ghost btn-sm" @onclick="ExportReviews" aria-label="Export reviews">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <button class="btn btn-primary btn-sm" @onclick="() => showAddModal = true" aria-label="Write a review">
+                <i class="bi bi-pencil-square"></i> Write Review
+            </button>
+        </div>
+    }
+    else
+    {
+        <button class="btn btn-primary btn-sm" @onclick="() => showAddModal = true" aria-label="Write a review">
+            <i class="bi bi-pencil-square"></i> Write a Review
+        </button>
+    }
+</div>
+
+<!-- SUMMARY STRIP -->
+<div class="rev-summary-strip">
+    <div class="rss-rating-big">
+        <div class="rss-big-num">@avgRating.ToString("F1")</div>
+        <div class="rss-stars">
+            @for (int i = 1; i <= 5; i++)
+            {
+                int star = i;
+                <i class="bi @(star <= (int)Math.Round(avgRating) ? "bi-star-fill" : "bi-star") rss-star"></i>
+            }
+        </div>
+        <div class="rss-count">@reviews.Count reviews</div>
+    </div>
+    <div class="rss-divider"></div>
+    <div class="rss-bars">
+        @foreach (var s in new[] { 5, 4, 3, 2, 1 })
+        {
+            int cnt  = reviews.Count(r => (int)r.Rating == s);
+            int pct  = reviews.Count > 0 ? (int)(cnt * 100.0 / reviews.Count) : 0;
+            <div class="rss-bar-row">
+                <span class="rss-bar-lbl">@s <i class="bi bi-star-fill"></i></span>
+                <div class="rss-bar-track">
+                    <div class="rss-bar-fill @(s >= 4 ? "green" : s == 3 ? "gold" : "pink")"
+                         style="width:@(pct)%"></div>
+                </div>
+                <span class="rss-bar-cnt">@cnt</span>
+            </div>
+        }
+    </div>
+    <div class="rss-divider"></div>
+    <div class="rss-quick-stats">
+        <div class="rqs-item">
+            <span class="rqs-val">@reviews.Count(r => !r.IsApproved)</span>
+            <span class="rqs-label">Pending</span>
+        </div>
+        <div class="rqs-item">
+            <span class="rqs-val">@reviews.Count(r => r.IsApproved)</span>
+            <span class="rqs-label">Approved</span>
+        </div>
+        <div class="rqs-item">
+            <span class="rqs-val">@reviews.Count(r => r.Rating >= 4)</span>
+            <span class="rqs-label">Positive</span>
+        </div>
+    </div>
+</div>
+
+<!-- FILTER / TOOLBAR -->
+<div class="rev-toolbar">
+    <div class="rev-tabs">
+        @foreach (var tab in new[] { "All", "5★", "4★", "3★", "2★", "1★", "Pending" })
+        {
+            <button class="rev-tab @(activeTab == tab ? "active" : "")"
+                    aria-label="Filter by @tab"
+                    @onclick="() => activeTab = tab">@tab</button>
+        }
+    </div>
+    <div class="rev-search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Product ya reviewer search..."
+               aria-label="Search reviews"
+               @bind="searchQuery" @bind:event="oninput" />
+    </div>
+    <select class="form-control form-control-sm" style="width:160px;" @bind="sortBy" aria-label="Sort reviews">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="highest">Highest Rated</option>
+        <option value="lowest">Lowest Rated</option>
+        <option value="helpful">Most Helpful</option>
+    </select>
+</div>
+
+<!-- REVIEWS LIST -->
+@if (!filteredReviews.Any())
+{
+    <div class="empty-state card">
+        <i class="bi bi-star-slash empty-icon" style="font-size:4rem;"></i>
+        <h4>Koi review nahi mila</h4>
+        <p>Filter change karein ya naya review likhein.</p>
+    </div>
+}
+else
+{
+    <div class="rev-list">
+        @foreach (var rev in filteredReviews)
+        {
+            <div class="rev-card @(!rev.IsApproved ? "pending" : "")">
+                <!-- LEFT: Avatar + Info -->
+                <div class="rev-user-col">
+                    <div class="rev-avatar" style="background:@GetAvatarColor(rev.ReviewerName)">@rev.ReviewerName[0]</div>
+                    <div class="rev-user-info">
+                        <strong>@rev.ReviewerName</strong>
+                        <span class="rev-date">@rev.DateAgo</span>
+                    </div>
+                </div>
+
+                <!-- CENTER: Content -->
+                <div class="rev-content-col">
+                    <div class="rev-product-tag">
+                        <i class="bi bi-box-seam"></i> @rev.ProductName
+                    </div>
+                    <div class="rev-stars">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            int star = i;
+                            <i class="bi @(star <= (int)rev.Rating ? "bi-star-fill" : "bi-star") rstar @(star <= (int)rev.Rating ? "filled" : "")"></i>
+                        }
+                        <span class="rev-rating-num">@rev.Rating.ToString("F1")</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(rev.Title))
+                    {
+                        <div class="rev-title">@rev.Title</div>
+                    }
+                    <p class="rev-body">@rev.Body</p>
+                    <div class="rev-footer-row">
+                        <button class="rev-helpful-btn @(rev.UserMarkedHelpful ? "active" : "")"
+                                aria-label="Mark as helpful"
+                                @onclick="() => ToggleHelpful(rev)">
+                            <i class="bi bi-hand-thumbs-up"></i>
+                            Helpful (@rev.HelpfulCount)
+                        </button>
+                        @if (!rev.IsApproved)
+                        {
+                            <span class="rev-badge pending-badge">
+                                <i class="bi bi-clock"></i> Pending
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="rev-badge approved-badge">
+                                <i class="bi bi-check-circle"></i> Approved
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- RIGHT: Actions (Admin only) -->
+                @if (AuthService.IsAdmin)
+                {
+                    <div class="rev-actions-col">
+                        @if (!rev.IsApproved)
+                        {
+                            <button class="rev-act-btn approve" title="Approve" aria-label="Approve review"
+                                    @onclick="() => ApproveReview(rev)">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        }
+                        <button class="rev-act-btn delete" title="Delete" aria-label="Delete review"
+                                @onclick="() => DeleteReview(rev)">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+<!-- ADD REVIEW MODAL -->
+@if (showAddModal)
+{
+    <div class="modal-backdrop" @onclick="() => showAddModal = false">
+        <div class="rev-modal" @onclick:stopPropagation="true">
+            <div class="modal-header-premium">
+                <h4><i class="bi bi-pencil-square"></i> Write a Review</h4>
+                <button class="modal-close" @onclick="() => showAddModal = false" aria-label="Close modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body-premium">
+                <div class="form-group">
+                    <label class="form-label">Product</label>
+                    <select class="form-control" @bind="newProductName" aria-label="Select product">
+                        <option value="">— Select Product —</option>
+                        <option>Sony WH-1000XM5</option>
+                        <option>Samsung Galaxy S24</option>
+                        <option>Nike Air Max 270</option>
+                        <option>Apple MacBook Air M3</option>
+                        <option>Adidas Ultraboost</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Review Title</label>
+                    <input class="form-control" placeholder="Short summary..." @bind="newTitle" aria-label="Review title" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rating</label>
+                    <div class="star-picker">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            int star = i;
+                            <button class="star-pick-btn @(newRating >= star ? "active" : "")"
+                                    aria-label="Rate @star stars"
+                                    @onclick="() => newRating = star">
+                                <i class="bi bi-star-fill"></i>
+                            </button>
+                        }
+                        <span class="star-pick-label">
+                            @(newRating == 0 ? "Select rating" : newRating == 5 ? "Excellent!" : newRating == 4 ? "Good" : newRating == 3 ? "Average" : newRating == 2 ? "Poor" : "Terrible")
+                        </span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Your Review</label>
+                    <textarea class="form-control" rows="4"
+                              placeholder="Apna experience share karein..."
+                              aria-label="Review body"
+                              @bind="newBody"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer-premium">
+                <button class="btn btn-ghost" @onclick="() => showAddModal = false">Cancel</button>
+                <button class="btn btn-primary" @onclick="SubmitReview"
+                        disabled="@(newRating == 0 || string.IsNullOrWhiteSpace(newBody))">
+                    <i class="bi bi-send"></i> Submit Review
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string activeTab = "All";
+    private string searchQuery = "";
+    private string sortBy = "newest";
+    private bool showAddModal = false;
+
+    private string newProductName = "";
+    private string newTitle = "";
+    private string newBody = "";
+    private int newRating = 0;
+    private int nextId = 20;
+
+    private class ReviewItem
+    {
+        public int    Id               { get; set; }
+        public string ReviewerName     { get; set; } = "";
+        public string ProductName      { get; set; } = "";
+        public string Title            { get; set; } = "";
+        public string Body             { get; set; } = "";
+        public double Rating           { get; set; }
+        public string DateAgo          { get; set; } = "";
+        public bool   IsApproved       { get; set; }
+        public int    HelpfulCount     { get; set; }
+        public bool   UserMarkedHelpful { get; set; }
+    }
+
+    private List<ReviewItem> reviews = new()
+    {
+        new() { Id=1, ReviewerName="Ali Hassan",    ProductName="Sony WH-1000XM5",     Title="Zabardast Sound Quality!", Body="In-ear walon ko chod diya. Noise cancellation ekdum kamaal hai, office mein bilkul disturb nahi hota. Build quality bhi top notch hai.", Rating=5.0, DateAgo="2 din pehle",   IsApproved=true,  HelpfulCount=24 },
+        new() { Id=2, ReviewerName="Sara Noor",     ProductName="Samsung Galaxy S24",   Title="Achi phone hai",           Body="Camera bohot acha hai, battery bhi theek hai. Performance smooth hai. Ek kami hai ke thori garmi hoti hai jab gaming karo.", Rating=4.0, DateAgo="5 din pehle",   IsApproved=true,  HelpfulCount=18 },
+        new() { Id=3, ReviewerName="Bilal Ahmed",   ProductName="Nike Air Max 270",     Title="",                         Body="Delivery fast thi, shoes original lagrahi hain. Size chart accurate tha, bilkul fit aayi.", Rating=5.0, DateAgo="1 hafta pehle",  IsApproved=true,  HelpfulCount=9  },
+        new() { Id=4, ReviewerName="Zara Hussain",  ProductName="Apple MacBook Air M3", Title="Worth every rupee",        Body="Blazing fast. Battery 12 ghante se zyada. For coding and light design work, perfect machine. Fans nahi hain to ekdum silent.", Rating=5.0, DateAgo="1 hafta pehle",  IsApproved=true,  HelpfulCount=31 },
+        new() { Id=5, ReviewerName="Hassan Khan",   ProductName="Adidas Ultraboost",    Title="Comfortable but pricey",   Body="Bohot comfortable hain running ke liye, magar price thodi zyada lagti hai. Quality wajibi hai.", Rating=3.5, DateAgo="2 hafta pehle", IsApproved=true,  HelpfulCount=5  },
+        new() { Id=6, ReviewerName="Fatima Malik",  ProductName="Sony WH-1000XM5",     Title="Overpriced",               Body="Sound acha hai magar itne paisoon mein behtar options hain. Call quality average. Return nahi kar saka.", Rating=2.0, DateAgo="3 hafta pehle", IsApproved=true,  HelpfulCount=3  },
+        new() { Id=7, ReviewerName="Omar Sheikh",   ProductName="Samsung Galaxy S24",   Title="",                         Body="Pehle din se problem aa gayi — display me ek spot. ShopWave ne replacement bhej di 2 dinon mein. Support acha tha.", Rating=3.0, DateAgo="1 mahina pehle",IsApproved=false, HelpfulCount=0  },
+        new() { Id=8, ReviewerName="Ayesha Tariq",  ProductName="Nike Air Max 270",     Title="Exactly as described",     Body="Photos mein jo dikha wahi mila. Packaging bhi acha tha. Dono pair correct size ke the. Recommend karunga.", Rating=4.0, DateAgo="1 mahina pehle",IsApproved=false, HelpfulCount=0  },
+    };
+
+    private double avgRating => reviews.Count > 0 ? reviews.Average(r => r.Rating) : 0;
+
+    private IEnumerable<ReviewItem> filteredReviews
+    {
+        get
+        {
+            var q = reviews.AsEnumerable();
+
+            if (activeTab == "Pending") q = q.Where(r => !r.IsApproved);
+            else if (activeTab.EndsWith("★"))
+            {
+                int s = int.Parse(activeTab[0].ToString());
+                q = q.Where(r => (int)r.Rating == s);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+                q = q.Where(r =>
+                    r.ReviewerName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    r.ProductName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    r.Body.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+            q = sortBy switch
+            {
+                "oldest"  => q.OrderBy(r => r.Id),
+                "highest" => q.OrderByDescending(r => r.Rating),
+                "lowest"  => q.OrderBy(r => r.Rating),
+                "helpful" => q.OrderByDescending(r => r.HelpfulCount),
+                _         => q.OrderByDescending(r => r.Id)
+            };
+
+            return q;
+        }
+    }
+
+    private void ToggleHelpful(ReviewItem r)
+    {
+        if (r.UserMarkedHelpful) { r.HelpfulCount--; r.UserMarkedHelpful = false; }
+        else                     { r.HelpfulCount++; r.UserMarkedHelpful = true; }
+    }
+
+    private void ApproveReview(ReviewItem r) => r.IsApproved = true;
+    private void DeleteReview(ReviewItem r)  => reviews.Remove(r);
+    private void ExportReviews()             { /* TODO */ }
+
+    private void SubmitReview()
+    {
+        if (newRating == 0 || string.IsNullOrWhiteSpace(newBody)) return;
+        reviews.Insert(0, new ReviewItem
+        {
+            Id           = nextId++,
+            ReviewerName = AuthService.CurrentUser?.FullName ?? "Anonymous",
+            ProductName  = string.IsNullOrEmpty(newProductName) ? "General" : newProductName,
+            Title        = newTitle,
+            Body         = newBody,
+            Rating       = newRating,
+            DateAgo      = "Abhi abhi",
+            IsApproved   = AuthService.IsAdmin,
+            HelpfulCount = 0
+        });
+        newProductName = newTitle = newBody = "";
+        newRating = 0;
+        showAddModal = false;
+    }
+
+    private string GetAvatarColor(string name)
+    {
+        var colors = new[] { "#5b8dee", "#f06292", "#2ec4b6", "#f4c26a", "#a18cd1" };
+        var idx = Math.Abs(name.GetHashCode()) % colors.Length;
+        return colors[idx];
+    }
+}
+
+<style>
+    /* ── SUMMARY STRIP ── */
+    .rev-summary-strip {
+        display:flex; align-items:center; gap:0;
+        background:var(--surface); border:1px solid var(--border);
+        border-radius:var(--r-xl); padding:24px 28px;
+        margin-bottom:20px; flex-wrap:wrap;
+    }
+    .rss-rating-big { text-align:center; padding:0 24px; flex-shrink:0; }
+    .rss-big-num { font-family:'Syne',sans-serif; font-size:3rem; font-weight:800; color: var(--text); line-height:1; }
+    .rss-stars { display:flex; gap:4px; justify-content:center; margin:6px 0; }
+    .rss-star { color:var(--gold); font-size:.9rem; }
+    .rss-count { font-size:.75rem; color:var(--text-muted); }
+    .rss-divider { width:1px; height:80px; background:var(--border); margin:0 20px; flex-shrink:0; }
+    .rss-bars { flex:1; min-width:200px; display:flex; flex-direction:column; gap:6px; }
+    .rss-bar-row { display:flex; align-items:center; gap:10px; }
+    .rss-bar-lbl { font-size:.72rem; color:var(--text-muted); white-space:nowrap; width:28px; text-align:right; }
+    .rss-bar-track { flex:1; height:6px; background:var(--border); border-radius:6px; overflow:hidden; }
+    .rss-bar-fill { height:100%; border-radius:6px; transition:width .6s ease; }
+    .rss-bar-fill.green { background:var(--success); }
+    .rss-bar-fill.gold  { background:var(--gold); }
+    .rss-bar-fill.pink  { background:var(--secondary); }
+    .rss-bar-cnt { font-size:.72rem; color:var(--text-muted); width:20px; }
+    .rss-quick-stats { display:flex; gap:24px; padding:0 24px; }
+    .rqs-item { text-align:center; }
+    .rqs-val { display:block; font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:800; color: var(--text); }
+    .rqs-label { font-size:.72rem; color:var(--text-muted); }
+
+    /* ── TOOLBAR ── */
+    .rev-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+    .rev-tabs { display:flex; gap:4px; flex-wrap:wrap; }
+    .rev-tab {
+        padding:7px 16px; border-radius:var(--r-full); border:1px solid rgba(0,0,0,0.08);
+        background: #FFFFFF; color: #6B7280; cursor:pointer;
+        font-size:.78rem; font-weight:600; font-family:'Poppins',sans-serif; transition:var(--t);
+    }
+    .rev-tab:hover { border-color: rgba(0,0,0,0.15); background: rgba(0,0,0,0.03); color: #111018; }
+    .rev-tab.active { background: #111018; color: #FFFFFF; border-color: #111018; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .rev-search {
+        display:flex; align-items:center; gap:10px;
+        background:var(--panel); border:1px solid var(--border);
+        border-radius:var(--r-md); padding:8px 14px; flex:1; min-width:180px;
+    }
+    .rev-search i { color:var(--text-muted); font-size:.85rem; }
+    .rev-search input { background:none; border:none; outline:none; color: var(--text); font-size:.82rem; width:100%; font-family:'Poppins',sans-serif; }
+    .rev-search input::placeholder { color:var(--text-muted); }
+
+    /* ── REVIEW CARDS ── */
+    .rev-list { display:flex; flex-direction:column; gap:12px; }
+    .rev-card {
+        display:flex; align-items:flex-start; gap:20px;
+        background:var(--surface); border:1px solid var(--border);
+        border-radius:var(--r-xl); padding:20px 22px;
+        transition:var(--t);
+    }
+    .rev-card:hover { border-color:var(--border-light); }
+    .rev-card.pending { border-left:3px solid var(--gold); }
+
+    /* User col */
+    .rev-user-col { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; min-width:80px; text-align:center; }
+    .rev-avatar {
+        width:44px; height:44px; border-radius:50%;
+        display:grid; place-items:center;
+        font-weight:800; font-size:1rem; color: var(--text);
+    }
+    .rev-user-info strong { display:block; font-size:.78rem; color: var(--text); }
+    .rev-date { font-size:.68rem; color:var(--text-muted); }
+
+    /* Content col */
+    .rev-content-col { flex:1; min-width:0; }
+    .rev-product-tag {
+        display:inline-flex; align-items:center; gap:5px;
+        background:rgba(91,141,238,.08); border:1px solid rgba(91,141,238,.15);
+        color:var(--primary); font-size:.72rem; font-weight:600;
+        padding:3px 10px; border-radius:var(--r-full); margin-bottom:8px;
+    }
+    .rev-stars { display:flex; align-items:center; gap:3px; margin-bottom:6px; }
+    .rstar { font-size:.85rem; color:var(--border); }
+    .rstar.filled { color:var(--gold); }
+    .rev-rating-num { font-size:.78rem; font-weight:700; color:var(--gold); margin-left:6px; }
+    .rev-title { font-weight:800; color: var(--text); font-size:.9rem; margin-bottom:4px; }
+    .rev-body { font-size:.82rem; color:var(--text-2); line-height:1.6; margin-bottom:12px; }
+    .rev-footer-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .rev-helpful-btn {
+        background:none; border:1px solid var(--border);
+        border-radius:var(--r-full); color:var(--text-muted);
+        font-size:.75rem; font-weight:600; padding:5px 14px;
+        cursor:pointer; transition:var(--t);
+        display:inline-flex; align-items:center; gap:6px;
+        font-family:'Poppins',sans-serif;
+    }
+    .rev-helpful-btn:hover, .rev-helpful-btn.active {
+        background:rgba(91,141,238,.08); border-color:var(--primary); color:var(--primary);
+    }
+    .rev-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--r-full); font-size:.7rem; font-weight:700; }
+    .approved-badge { background:rgba(72,199,142,.1); color:var(--success); }
+    .pending-badge  { background:rgba(244,162,97,.1);  color:var(--gold); }
+
+    /* Actions col */
+    .rev-actions-col { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+    .rev-act-btn {
+        width:34px; height:34px; border-radius:var(--r-md);
+        display:grid; place-items:center; cursor:pointer;
+        border:1px solid var(--border); background:none;
+        font-size:.85rem; transition:var(--t);
+    }
+    .rev-act-btn.approve { color:var(--success); }
+    .rev-act-btn.approve:hover { background:rgba(72,199,142,.1); border-color:rgba(72,199,142,.3); }
+    .rev-act-btn.delete { color:var(--text-muted); }
+    .rev-act-btn.delete:hover { background:rgba(240,98,146,.08); border-color:rgba(240,98,146,.2); color:var(--danger); }
+
+    /* ── ADD REVIEW MODAL ── */
+    .modal-backdrop {
+        position:fixed; inset:0; background:rgba(0,0,0,.7);
+        backdrop-filter:blur(4px); z-index:9000;
+        display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    .rev-modal {
+        background:var(--surface); border:1px solid var(--border);
+        border-radius:var(--r-xl); width:100%; max-width:520px;
+        box-shadow:0 24px 60px rgba(0,0,0,.5); overflow:hidden;
+    }
+    .modal-header-premium {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:20px 24px; border-bottom:1px solid var(--border);
+    }
+    .modal-header-premium h4 { font-family:'Syne',sans-serif; font-size:1rem; font-weight:800; color: var(--text); display:flex; align-items:center; gap:8px; }
+    .modal-close { background:none; border:none; color:var(--text-muted); font-size:1rem; cursor:pointer; transition:var(--t); padding:4px; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body-premium { padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
+    .modal-footer-premium { display:flex; justify-content:flex-end; gap:10px; padding:16px 24px; border-top:1px solid var(--border); }
+
+    /* Star picker */
+    .star-picker { display:flex; align-items:center; gap:6px; }
+    .star-pick-btn {
+        background:none; border:none; cursor:pointer;
+        font-size:1.4rem; color:var(--border); transition:var(--t); padding:2px;
+    }
+    .star-pick-btn.active { color:var(--gold); }
+    .star-pick-btn:hover  { color:var(--gold); transform:scale(1.15); }
+    .star-pick-label { font-size:.78rem; color:var(--text-muted); margin-left:6px; }
+
+    /* ── HEADER EXTRAS ── */
+    .rev-header-actions { display:flex; align-items:center; gap:10px; }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width:768px) {
+        .rev-card { flex-direction:column; }
+        .rev-user-col { flex-direction:row; min-width:unset; text-align:left; }
+        .rev-summary-strip { flex-direction:column; }
+        .rss-divider { width:100%; height:1px; margin:12px 0; }
+    }
+</style>
+

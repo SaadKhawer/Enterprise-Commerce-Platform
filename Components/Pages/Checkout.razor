@@ -1,0 +1,733 @@
+@page "/checkout"
+@using Microsoft.EntityFrameworkCore
+@using ShopWaveBlazor.Web.ECommerceAPI.Models
+@using ShopWaveBlazor.Web.ECommerceAPI.Data
+@using ShopWaveBlazor.Web.Services
+@inject ShopWaveBlazor.Web.Services.OrderService OrderService
+@inject ShopWaveBlazor.Web.Services.CartService CartService
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<ECommerceDbContext> DbFactory
+
+<PageTitle>ShopWave — Checkout</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Checkout</h2>
+        <div class="breadcrumb">
+            Home <i class="bi bi-chevron-right"></i>
+            Cart <i class="bi bi-chevron-right"></i>
+            <span>Checkout</span>
+        </div>
+    </div>
+</div>
+
+<!-- STEP INDICATOR -->
+<div class="checkout-steps">
+    <div class="step @(currentStep >= 1 ? (currentStep > 1 ? "done" : "active") : "")">
+        <div class="step-num">
+            @if (currentStep > 1) { <i class="bi bi-check-lg"></i> } else { <span>1</span> }
+        </div>
+        <div class="step-label">
+            <strong>Delivery</strong>
+            <span>Address info</span>
+        </div>
+    </div>
+    <div class="step-connector @(currentStep > 1 ? "done" : "")"></div>
+
+    <div class="step @(currentStep >= 2 ? (currentStep > 2 ? "done" : "active") : "")">
+        <div class="step-num">
+            @if (currentStep > 2) { <i class="bi bi-check-lg"></i> } else { <span>2</span> }
+        </div>
+        <div class="step-label">
+            <strong>Payment</strong>
+            <span>Payment method</span>
+        </div>
+    </div>
+    <div class="step-connector @(currentStep > 2 ? "done" : "")"></div>
+
+    <div class="step @(currentStep >= 3 ? "active" : "")">
+        <div class="step-num"><span>3</span></div>
+        <div class="step-label">
+            <strong>Review</strong>
+            <span>Confirm order</span>
+        </div>
+    </div>
+</div>
+
+@if (orderPlaced)
+{
+    <!-- SUCCESS STATE -->
+    <div class="order-success-wrap">
+        <div class="success-card">
+            <div class="success-orb"></div>
+            <div class="success-icon">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <h2 class="success-title">Order Placed Successfully!</h2>
+            <p class="success-sub">
+                Shukriya! Aapka order receive ho gaya hai.<br />
+                Order ID: <strong class="text-primary">#SW-@confirmedOrderId</strong>
+            </p>
+            <div class="success-info-grid">
+                <div class="sinfo-item">
+                    <i class="bi bi-truck text-primary"></i>
+                    <span>Estimated Delivery<br /><strong>5-7 Business Days</strong></span>
+                </div>
+                <div class="sinfo-item">
+                    <i class="bi bi-envelope text-success"></i>
+                    <span>Confirmation Email<br /><strong>Sent to your email</strong></span>
+                </div>
+                <div class="sinfo-item">
+                    <i class="bi bi-shield-check text-gold"></i>
+                    <span>Buyer Protection<br /><strong>Active on this order</strong></span>
+                </div>
+            </div>
+            <div class="success-actions">
+                <button class="btn btn-primary btn-lg" @onclick='() => Navigation.NavigateTo("/orders")'>
+                    <i class="bi bi-bag-check"></i> View My Orders
+                </button>
+                <button class="btn btn-secondary btn-lg" @onclick='() => Navigation.NavigateTo("/")'>
+                    <i class="bi bi-shop"></i> Continue Shopping
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else if (!AuthService.IsAuthenticated)
+{
+    <div class="empty-state card">
+        <div class="empty-icon" style="font-size:4rem;">🔐</div>
+        <h4>Please Login</h4>
+        <p>You need to be logged in to proceed with checkout.</p>
+        <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/login")'>
+            <i class="bi bi-box-arrow-in-right"></i> Login Now
+        </button>
+    </div>
+}
+else
+{
+    <div class="checkout-layout">
+
+        <!-- LEFT: STEPS CONTENT -->
+        <div class="checkout-main">
+
+            <!-- ── STEP 1: DELIVERY ADDRESS ── -->
+            @if (currentStep == 1)
+            {
+                <div class="checkout-section">
+                    <div class="checkout-section-header">
+                        <div class="cs-icon blue"><i class="bi bi-geo-alt"></i></div>
+                        <div>
+                            <h4>Delivery Address</h4>
+                            <span>Apna delivery address enter karein</span>
+                        </div>
+                    </div>
+
+                    <!-- SAVED ADDRESSES -->
+                    <div class="saved-addresses">
+                        <div class="saved-addr @(selectedAddr == 0 ? "selected" : "")"
+                             @onclick='() => selectedAddr = 0'>
+                            <input type="radio" id="addr-default" name="addr" checked="@(selectedAddr == 0)" />
+                            <label class="addr-info" for="addr-default">
+                                <strong>Home</strong>
+                                <span>@AuthService.CurrentUser?.FullName · @(AuthService.CurrentUser?.Address ?? "No address saved")</span>
+                                <span class="addr-phone">@AuthService.CurrentUser?.PhoneNumber</span>
+                            </label>
+                            <span class="badge badge-primary">Default</span>
+                        </div>
+                        
+                        <div class="saved-addr new-addr @(selectedAddr == 2 ? "selected" : "")"
+                             @onclick='() => selectedAddr = 2'>
+                            <i class="bi bi-plus-circle text-primary"></i>
+                            <span>Add New Address</span>
+                        </div>
+                    </div>
+
+                    @if (selectedAddr == 2)
+                    {
+                        <!-- NEW ADDRESS FORM -->
+                        <div class="addr-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" for="full-name">Full Name</label>
+                                    <input id="full-name" class="form-control" placeholder="e.g. Ali Hassan" @bind="form.FullName" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="phone">Phone Number</label>
+                                    <input id="phone" class="form-control" placeholder="+92 300 0000000" @bind="form.Phone" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="email">Email Address (For Order Confirmation)</label>
+                                <input id="email" type="email" class="form-control" placeholder="example@gmail.com" @bind="form.Email" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="address">Street Address</label>
+                                <input id="address" class="form-control" placeholder="House No, Street, Area" @bind="form.Address" />
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" for="city">City</label>
+                                    <select id="city" class="form-control" @bind="form.City">
+                                        <option value="">Select City</option>
+                                        <option>Islamabad</option>
+                                        <option>Rawalpindi</option>
+                                        <option>Lahore</option>
+                                        <option>Karachi</option>
+                                        <option>Peshawar</option>
+                                        <option>Quetta</option>
+                                        <option>Multan</option>
+                                        <option>Faisalabad</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="postal-code">Postal Code</label>
+                                    <input id="postal-code" class="form-control" placeholder="44000" @bind="form.PostalCode" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="notes">Delivery Notes (Optional)</label>
+                                <input id="notes" class="form-control" placeholder="e.g. Ring bell twice, leave at gate..." @bind="form.Notes" />
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(stepError))
+                    {
+                        <div class="step-error">
+                            <i class="bi bi-exclamation-triangle"></i> @stepError
+                        </div>
+                    }
+
+                    <button class="btn btn-primary btn-lg step-next-btn" @onclick="GoToStep2">
+                        Continue to Payment <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            }
+
+            <!-- ── STEP 2: PAYMENT ── -->
+            @if (currentStep == 2)
+            {
+                <div class="checkout-section">
+                    <div class="checkout-section-header">
+                        <div class="cs-icon pink"><i class="bi bi-credit-card"></i></div>
+                        <div>
+                            <h4>Payment Method</h4>
+                            <span>Apna payment method choose karein</span>
+                        </div>
+                    </div>
+
+                    <div class="payment-methods">
+                        <div class="payment-method @(paymentMethod == "card" ? "selected" : "")"
+                             @onclick='() => paymentMethod = "card"'>
+                            <div class="pm-radio">
+                                <input type="radio" id="pay-card" name="pay" checked="@(paymentMethod == "card")" />
+                            </div>
+                            <label class="pm-icon" for="pay-card">💳</label>
+                            <label class="pm-info" for="pay-card">
+                                <strong>Credit / Debit Card</strong>
+                                <span>Visa, Mastercard, UBL, HBL</span>
+                            </label>
+                        </div>
+                        <div class="payment-method @(paymentMethod == "jazzcash" ? "selected" : "")"
+                             @onclick='() => paymentMethod = "jazzcash"'>
+                            <div class="pm-radio">
+                                <input type="radio" id="pay-jazz" name="pay" checked="@(paymentMethod == "jazzcash")" />
+                            </div>
+                            <label class="pm-icon" for="pay-jazz">📱</label>
+                            <label class="pm-info" for="pay-jazz">
+                                <strong>JazzCash</strong>
+                                <span>Mobile wallet payment</span>
+                            </label>
+                        </div>
+                        <div class="payment-method @(paymentMethod == "easypaisa" ? "selected" : "")"
+                             @onclick='() => paymentMethod = "easypaisa"'>
+                            <div class="pm-radio">
+                                <input type="radio" id="pay-easy" name="pay" checked="@(paymentMethod == "easypaisa")" />
+                            </div>
+                            <label class="pm-icon" for="pay-easy">💚</label>
+                            <label class="pm-info" for="pay-easy">
+                                <strong>EasyPaisa</strong>
+                                <span>Mobile wallet payment</span>
+                            </label>
+                        </div>
+                        <div class="payment-method @(paymentMethod == "cod" ? "selected" : "")"
+                             @onclick='() => paymentMethod = "cod"'>
+                            <div class="pm-radio">
+                                <input type="radio" id="pay-cod" name="pay" checked="@(paymentMethod == "cod")" />
+                            </div>
+                            <label class="pm-icon" for="pay-cod">💵</label>
+                            <label class="pm-info" for="pay-cod">
+                                <strong>Cash on Delivery</strong>
+                                <span>Pay when you receive</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- CARD FORM -->
+                    @if (paymentMethod == "card")
+                    {
+                        <div class="card-form">
+                            <div class="card-preview">
+                                <div class="cp-chip">
+                                    <i class="bi bi-cpu"></i>
+                                </div>
+                                <div class="cp-number">@MaskedCardNumber</div>
+                                <div class="cp-bottom">
+                                    <div>
+                                        <span class="cp-label">Card Holder</span>
+                                        <span class="cp-val">@(string.IsNullOrEmpty(form.FullName) ? "YOUR NAME" : form.FullName.ToUpper())</span>
+                                    </div>
+                                    <div>
+                                        <span class="cp-label">Expires</span>
+                                        <span class="cp-val">@(string.IsNullOrEmpty(form.Expiry) ? "MM/YY" : form.Expiry)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="card-num">Card Number</label>
+                                <input id="card-num" class="form-control" placeholder="1234 5678 9012 3456"
+                                       maxlength="16" @bind="form.CardNumber" @bind:event="oninput" />
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" for="card-expiry">Expiry Date</label>
+                                    <input id="card-expiry" class="form-control" placeholder="MM/YY" @bind="form.Expiry" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="card-cvv">CVV</label>
+                                    <input id="card-cvv" class="form-control" placeholder="•••" maxlength="3" type="password" @bind="form.Cvv" />
+                                </div>
+                            </div>
+                            <div class="secure-note">
+                                <i class="bi bi-lock-fill"></i>
+                                Your card details are encrypted and secure
+                            </div>
+                        </div>
+                    }
+
+                    @if (paymentMethod == "jazzcash" || paymentMethod == "easypaisa")
+                    {
+                        <div class="wallet-form">
+                            <div class="form-group">
+                                <label class="form-label" for="wallet-num">
+                                    @(paymentMethod == "jazzcash" ? "JazzCash" : "EasyPaisa") Mobile Number
+                                </label>
+                                <input id="wallet-num" class="form-control" placeholder="+92 3XX XXXXXXX" @bind="form.WalletNumber" />
+                            </div>
+                            <div class="wallet-note">
+                                <i class="bi bi-info-circle"></i>
+                                Ek OTP aapke number par bheja jayega confirm karne ke liye
+                            </div>
+                        </div>
+                    }
+
+                    @if (paymentMethod == "cod")
+                    {
+                        <div class="cod-note">
+                            <i class="bi bi-info-circle text-gold"></i>
+                            <div>
+                                <strong>Cash on Delivery selected</strong>
+                                <span>Delivery ke waqt exact amount tayar rakhein. Rs. 50 COD charges laagu honge.</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(stepError))
+                    {
+                        <div class="step-error"><i class="bi bi-exclamation-triangle"></i> @stepError</div>
+                    }
+
+                    <div class="step-nav-btns">
+                        <button class="btn btn-secondary" @onclick='() => { currentStep = 1; stepError = ""; }'>
+                            <i class="bi bi-arrow-left"></i> Back
+                        </button>
+                        <button class="btn btn-primary btn-lg" @onclick="GoToStep3">
+                            Review Order <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <!-- ── STEP 3: REVIEW ── -->
+            @if (currentStep == 3)
+            {
+                <div class="checkout-section">
+                    <div class="checkout-section-header">
+                        <div class="cs-icon green"><i class="bi bi-clipboard-check"></i></div>
+                        <div>
+                            <h4>Review Your Order</h4>
+                            <span>Place karne se pehle sab check kar lein</span>
+                        </div>
+                    </div>
+
+                    <!-- DELIVERY SUMMARY -->
+                    <div class="review-block">
+                        <div class="review-block-header">
+                            <span><i class="bi bi-geo-alt"></i> Delivery Address</span>
+                            <button class="btn btn-ghost btn-sm" @onclick="() => currentStep = 1">Edit</button>
+                        </div>
+                        <div class="review-block-body">
+                            <strong>@GetReviewName()</strong>
+                            <span>@GetReviewAddress()</span>
+                        </div>
+                    </div>
+
+                    <!-- PAYMENT SUMMARY -->
+                    <div class="review-block">
+                        <div class="review-block-header">
+                            <span><i class="bi bi-credit-card"></i> Payment Method</span>
+                            <button class="btn btn-ghost btn-sm" @onclick="() => currentStep = 2">Edit</button>
+                        </div>
+                        <div class="review-block-body">
+                            <strong>@GetPaymentLabel()</strong>
+                            @if (paymentMethod == "card")
+                            {
+                                <span>Card ending in ••••@(form.CardNumber?.Length >= 4 ? form.CardNumber[^4..] : "0000")</span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- ITEMS REVIEW -->
+                    <div class="review-block">
+                        <div class="review-block-header">
+                            <span><i class="bi bi-box"></i> Items (@cartItems.Count)</span>
+                        </div>
+                        <div class="review-items">
+                            @foreach (var item in cartItems)
+                            {
+                                <div class="review-item">
+                                    <div class="ri-img">
+                                        <img src="@ProductImageService.GetImage(item.Product?.ProductName, item.Product?.Category?.CategoryName)"
+                                             alt="@item.Product?.ProductName"
+                                             onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=80&q=80'" />
+                                    </div>
+                                    <div class="ri-info">
+                                        <strong>@item.Product?.ProductName</strong>
+                                        <span>Qty: @item.Quantity · Rs. @item.Product?.Price.ToString("N0")</span>
+                                    </div>
+                                    <div class="ri-total">
+                                        Rs. @((item.Product?.Price * item.Quantity)?.ToString("N0"))
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="step-nav-btns">
+                        <button class="btn btn-secondary" @onclick='() => { currentStep = 2; stepError = ""; }'>
+                            <i class="bi bi-arrow-left"></i> Back
+                        </button>
+                        <button class="btn btn-primary btn-lg place-order-btn"
+                                @onclick="PlaceOrder" disabled="@isPlacing">
+                            @if (isPlacing)
+                            {
+                                <span class="spinner" style="width:18px;height:18px;border-width:2px;"></span>
+                                <span>Placing Order...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-bag-check"></i>
+                                <span>Place Order</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- RIGHT: ORDER SUMMARY SIDEBAR -->
+        <aside class="checkout-summary">
+            <h4 class="summary-title">
+                <i class="bi bi-receipt"></i> Order Summary
+            </h4>
+
+            <!-- ITEMS -->
+            <div class="co-items">
+                @foreach (var item in cartItems.Take(3))
+                {
+                    <div class="co-item">
+                        <div class="co-item-img">
+                            <img src="@ProductImageService.GetImage(item.Product?.ProductName, item.Product?.Category?.CategoryName)"
+                                 alt="@item.Product?.ProductName"
+                                 onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=80&q=80'" />
+                            <span class="co-item-qty">@item.Quantity</span>
+                        </div>
+                        <div class="co-item-info">
+                            <span class="co-item-name">@item.Product?.ProductName</span>
+                        </div>
+                        <span class="co-item-price">Rs. @((item.Product?.Price * item.Quantity)?.ToString("N0"))</span>
+                    </div>
+                }
+                @if (cartItems.Count > 3)
+                {
+                    <div class="co-more">+ @(cartItems.Count - 3) more items</div>
+                }
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <!-- PRICE ROWS -->
+            <div class="summary-rows">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>Rs. @subtotal.ToString("N0")</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <span class="text-success fw-bold">Free</span>
+                </div>
+                <div class="summary-row">
+                    <span>GST (5%)</span>
+                    <span>Rs. @gst.ToString("N0")</span>
+                </div>
+                @if (paymentMethod == "cod")
+                {
+                    <div class="summary-row">
+                        <span>COD Charges</span>
+                        <span>Rs. 50</span>
+                    </div>
+                }
+            </div>
+
+            <div class="summary-total-row">
+                <span>Total</span>
+                <span class="total-val">Rs. @total.ToString("N0")</span>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <!-- TRUST BADGES -->
+            <div class="trust-badges">
+                <div class="trust-badge">
+                    <i class="bi bi-shield-lock text-success"></i>
+                    <span>SSL Secured</span>
+                </div>
+                <div class="trust-badge">
+                    <i class="bi bi-arrow-repeat text-primary"></i>
+                    <span>Easy Returns</span>
+                </div>
+                <div class="trust-badge">
+                    <i class="bi bi-headset text-gold"></i>
+                    <span>24/7 Support</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+}
+
+@code {
+    private int currentStep = 1;
+    private int selectedAddr = 0;
+    private string paymentMethod = "cod";
+    private string stepError = "";
+    private bool isPlacing = false;
+    private bool orderPlaced = false;
+    private string confirmedOrderId = "";
+
+    private List<ShopWaveBlazor.Web.ECommerceAPI.Models.Cart> cartItems = new();
+
+    private decimal subtotal => cartItems.Sum(i => (i.Product?.Price ?? 0) * i.Quantity);
+    private decimal gst      => subtotal * 0.05m;
+    private decimal cod      => paymentMethod == "cod" ? 50 : 0;
+    private decimal total    => subtotal + gst + cod;
+
+    private CheckoutForm form = new();
+
+    private string MaskedCardNumber
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(form.CardNumber)) return "•••• •••• •••• ••••";
+            var digits = new string(form.CardNumber.Where(char.IsDigit).ToArray());
+            var last4 = digits.Length >= 4 ? digits[^4..] : digits;
+            return $"•••• •••• •••• {last4}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated && AuthService.CurrentUser != null)
+        {
+            cartItems = await CartService.GetCartItemsAsync(AuthService.CurrentUser.UserID);
+            if (!cartItems.Any())
+            {
+                Navigation.NavigateTo("/cart");
+                return;
+            }
+            
+            // Pre-fill form if user has profile info
+            form.FullName = AuthService.CurrentUser.FullName;
+            form.Phone = AuthService.CurrentUser.PhoneNumber ?? "";
+            form.Email = AuthService.CurrentUser.Email ?? "";
+            form.Address = AuthService.CurrentUser.Address ?? "";
+        }
+        else if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private void GoToStep2()
+    {
+        stepError = "";
+        if (selectedAddr == 2)
+        {
+            if (string.IsNullOrWhiteSpace(form.FullName))   { stepError = "Full name zaroor bharein."; return; }
+            if (string.IsNullOrWhiteSpace(form.Email))      { stepError = "Email address zaroor bharein."; return; }
+            if (string.IsNullOrWhiteSpace(form.Address))    { stepError = "Address zaroor bharein."; return; }
+            if (string.IsNullOrWhiteSpace(form.City))       { stepError = "City select karein."; return; }
+        }
+        else
+        {
+            // Even with default address, ensure we have an email
+            if (string.IsNullOrWhiteSpace(form.Email)) { stepError = "Email address zaroor bharein."; return; }
+        }
+        currentStep = 2;
+    }
+
+    private void GoToStep3()
+    {
+        stepError = "";
+        if (paymentMethod == "card")
+        {
+            if (string.IsNullOrWhiteSpace(form.CardNumber) || form.CardNumber.Length < 16)
+            { stepError = "Valid card number enter karein."; return; }
+            if (string.IsNullOrWhiteSpace(form.Expiry))
+            { stepError = "Expiry date enter karein."; return; }
+            if (string.IsNullOrWhiteSpace(form.Cvv) || form.Cvv.Length < 3)
+            { stepError = "CVV enter karein."; return; }
+        }
+        if ((paymentMethod == "jazzcash" || paymentMethod == "easypaisa") &&
+            string.IsNullOrWhiteSpace(form.WalletNumber))
+        { stepError = "Mobile number enter karein."; return; }
+        currentStep = 3;
+    }
+
+    private async Task PlaceOrder()
+    {
+        if (AuthService.CurrentUser == null) return;
+
+        isPlacing = true;
+        try
+        {
+            var addr = GetReviewAddress();
+            var phone = GetReviewPhone();
+            var pm = MapPaymentMethod(paymentMethod);
+
+            // Wrapping DB logic in IDbContextFactory as requested
+            using var Db = await DbFactory.CreateDbContextAsync();
+            
+            var placed = await OrderService.PlaceOrderAsync(
+                AuthService.CurrentUser.UserID, 
+                "Standard", 
+                pm, 
+                addr, 
+                phone,
+                form.Email
+            );
+
+            if (placed != null)
+            {
+                confirmedOrderId = placed.OrderID.ToString("D5");
+                orderPlaced = true;
+            }
+            else
+            {
+                stepError = "Order process se null return hua. Shayad Cart empty hai.";
+            }
+        }
+        catch (Exception ex)
+        {
+            stepError = "Order Error: " + ex.Message;
+            if (ex.InnerException != null) stepError += " | " + ex.InnerException.Message;
+            Console.WriteLine(stepError);
+            StateHasChanged(); // Ensure error is visible
+        }
+        finally 
+        {
+            isPlacing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string MapPaymentMethod(string method) => method switch
+    {
+        "card"       => "CreditCard",
+        "jazzcash"   => "JazzCash",
+        "easypaisa"  => "EasyPaisa",
+        "cod"        => "COD",
+        _            => "COD"
+    };
+
+    private string GetReviewName() => selectedAddr == 2 ? form.FullName : (AuthService.CurrentUser?.FullName ?? "");
+    
+    private string GetReviewAddress() => selectedAddr == 2 
+        ? $"{form.Address}, {form.City} {form.PostalCode}" 
+        : (AuthService.CurrentUser?.Address ?? "");
+
+    private string GetReviewPhone() => selectedAddr == 2 ? form.Phone : (AuthService.CurrentUser?.PhoneNumber ?? "");
+
+    private string GetPaymentLabel() => paymentMethod switch
+    {
+        "card"       => "Credit / Debit Card",
+        "jazzcash"   => "JazzCash",
+        "easypaisa"  => "EasyPaisa",
+        "cod"        => "Cash on Delivery",
+        _            => "—"
+    };
+
+    private class CheckoutForm
+    {
+        public string FullName     { get; set; } = "";
+        public string Email        { get; set; } = "";
+        public string Phone        { get; set; } = "";
+        public string Address      { get; set; } = "";
+        public string City         { get; set; } = "";
+        public string PostalCode   { get; set; } = "";
+        public string Notes        { get; set; } = "";
+        public string CardNumber   { get; set; } = "";
+        public string Expiry       { get; set; } = "";
+        public string Cvv          { get; set; } = "";
+        public string WalletNumber { get; set; } = "";
+    }
+}
+
+<style>
+    /* ── STEP INDICATOR ── */
+    .checkout-steps { display: flex; align-items: center; margin-bottom: 32px; padding: 24px 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); }
+    .step { display: flex; align-items: center; gap: 14px; }
+    .step-num { width: 42px; height: 42px; border-radius: 50%; background: var(--panel); border: 2px solid var(--border); display: grid; place-items: center; font-weight: 700; color: var(--text-muted); transition: var(--t); flex-shrink: 0; font-size: .95rem; }
+    .step.active .step-num { border-color: var(--primary); color: var(--primary); background: rgba(91,141,238,.1); box-shadow: 0 0 0 4px rgba(91,141,238,.15); }
+    .step.done .step-num { border-color: var(--success); background: var(--success); color: var(--text); }
+    .step-label strong { display: block; font-size: .88rem; color: var(--text); }
+    .step-label span { font-size: .75rem; color: var(--text-muted); }
+    .step-connector { flex: 1; height: 2px; background: var(--border); margin: 0 18px; border-radius: 2px; transition: var(--t); }
+    .step-connector.done { background: var(--success); }
+
+    /* ── CHECKOUT LAYOUT ── */
+    .checkout-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+
+    /* ── SECTION ── */
+    .checkout-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 28px; }
+    .checkout-section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .cs-icon { width: 48px; height: 48px; border-radius: var(--r-md); display: grid; place-items: center; font-size: 1.3rem; flex-shrink: 0; }
+    .cs-icon.blue { background: rgba(91,141,238,.12); color: var(--primary); }
+    .cs-icon.pink { background: rgba(240,98,146,.12); color: var(--secondary); }
+    .cs-icon.green { background: rgba(46,196,182,.12); color: var(--success); }
+    .checkout-section-header h4 { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--text); margin: 0; }
+    .checkout-section-header span { font-size: .8rem; color: var(--text-muted); }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 768px) {
+        .checkout-layout { grid-template-columns: 1fr; }
+        .checkout-summary { margin-top: 24px; position: static; }
+        .payment-methods { grid-template-columns: 1fr; }
+        .checkout-steps { flex-direction: column; gap: 15px; align-items: flex-start; }
+        .step-connector { display: none; }
+    }
+
+    .cp-number { font-family: monospace; font-size: 1.2rem; letter-spacing: 2px; color: var(--text); margin: 20px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+</style>
+

@@ -1,0 +1,262 @@
+@page "/notifications"
+@inject NavigationManager Navigation
+
+<PageTitle>ShopWave — Notifications</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Notifications</h2>
+        <div class="breadcrumb">Home <i class="bi bi-chevron-right"></i> <span>Notifications</span></div>
+    </div>
+    <div class="header-actions-row">
+        <button class="btn btn-ghost btn-sm" @onclick="MarkAllRead" aria-label="Mark all as read">
+            <i class="bi bi-check2-all"></i> Sab Read Karen
+        </button>
+        <button class="btn btn-danger btn-sm" @onclick="ClearAll" aria-label="Clear all notifications">
+            <i class="bi bi-trash3"></i> Clear All
+        </button>
+    </div>
+</div>
+
+<!-- SUMMARY STRIP -->
+<div class="notif-summary">
+    <div class="ns-item">
+        <span class="ns-val">@notifications.Count</span>
+        <span class="ns-label">Total</span>
+    </div>
+    <div class="ns-divider"></div>
+    <div class="ns-item">
+        <span class="ns-val unread">@notifications.Count(n => !n.IsRead)</span>
+        <span class="ns-label">Unread</span>
+    </div>
+    <div class="ns-divider"></div>
+    <div class="ns-item">
+        <span class="ns-val">@notifications.Count(n => n.Type == "order")</span>
+        <span class="ns-label">Orders</span>
+    </div>
+    <div class="ns-divider"></div>
+    <div class="ns-item">
+        <span class="ns-val">@notifications.Count(n => n.Type == "promo")</span>
+        <span class="ns-label">Promotions</span>
+    </div>
+</div>
+
+<!-- FILTER TABS -->
+<div class="notif-tabs">
+    @foreach (var tab in new[] { "All", "Orders", "Promos", "System" })
+    {
+        <button class="notif-tab @(activeTab == tab ? "active" : "")"
+                aria-label="Filter by @tab"
+                @onclick="() => activeTab = tab">
+            @tab
+            <span class="ntab-count">@GetTabCount(tab)</span>
+        </button>
+    }
+</div>
+
+<!-- NOTIFICATIONS LIST -->
+@if (!filteredNotifs.Any())
+{
+    <div class="empty-state card">
+        <i class="bi bi-bell-slash empty-icon" style="font-size:4rem;"></i>
+        <h4>Koi notification nahi</h4>
+        <p>Jab koi activity hogi, yahan dikhai degi.</p>
+    </div>
+}
+else
+{
+    <div class="notif-list">
+        @foreach (var n in filteredNotifs)
+        {
+            <div class="notif-card @(!n.IsRead ? "unread" : "")" @onclick="() => ReadNotif(n)">
+                <div class="notif-icon-wrap @n.Type">
+                    <i class="bi @GetIcon(n.Type)"></i>
+                    @if (!n.IsRead)
+                    {
+                        <div class="unread-dot"></div>
+                    }
+                </div>
+                <div class="notif-body">
+                    <div class="notif-top">
+                        <strong class="notif-title">@n.Title</strong>
+                        <span class="notif-time">@n.TimeAgo</span>
+                    </div>
+                    <p class="notif-msg">@n.Message</p>
+                    @if (!string.IsNullOrEmpty(n.ActionLabel))
+                    {
+                        <button class="notif-action-btn" @onclick:stopPropagation="true"
+                                aria-label="@n.ActionLabel"
+                                @onclick='() => Navigation.NavigateTo(n.ActionUrl ?? "/")'>
+                            @n.ActionLabel <i class="bi bi-arrow-right"></i>
+                        </button>
+                    }
+                </div>
+                <button class="notif-dismiss" title="Dismiss"
+                        aria-label="Dismiss notification"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => notifications.Remove(n)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string activeTab = "All";
+
+    private class NotifItem
+    {
+        public int    Id          { get; set; }
+        public string Title       { get; set; } = "";
+        public string Message     { get; set; } = "";
+        public string Type        { get; set; } = "system"; // order, promo, system, review
+        public string TimeAgo     { get; set; } = "";
+        public bool   IsRead      { get; set; } = false;
+        public string? ActionLabel { get; set; }
+        public string? ActionUrl   { get; set; }
+    }
+
+    private List<NotifItem> notifications = new()
+    {
+        new() { Id=1, Title="Order Shipped!", Message="Aapka order #SW-48291 Lahore se dispatch ho gaya hai. Expected delivery: May 5.", Type="order", TimeAgo="2 minutes pehle", IsRead=false, ActionLabel="Track Order", ActionUrl="/orders" },
+        new() { Id=2, Title="Payment Successful", Message="Rs. 12,500 ki payment successfully process ho gayi. Order #SW-48291 confirm hai.", Type="order", TimeAgo="15 minutes pehle", IsRead=false, ActionLabel="View Order", ActionUrl="/orders" },
+        new() { Id=3, Title="Flash Sale — 30% OFF!", Message="Sirf aaj! Electronics par 30% discount. Offer raat 12 baje khatam hoga.", Type="promo", TimeAgo="1 ghanta pehle", IsRead=false, ActionLabel="Shop Now", ActionUrl="/" },
+        new() { Id=4, Title="New Review Submitted", Message="Ali Hassan ne aapke purchased product ko 5 stars diye hain.", Type="review", TimeAgo="3 ghante pehle", IsRead=true, ActionLabel="Reviews Dekhein", ActionUrl="/reviews" },
+        new() { Id=5, Title="Order Delivered", Message="Aapka order #SW-47103 successfully deliver ho gaya. Umeed hai pasand aaya hoga!", Type="order", TimeAgo="1 din pehle", IsRead=true, ActionLabel="Review Likhein", ActionUrl="/reviews" },
+        new() { Id=6, Title="Weekend Sale — SAVE10", Message="Is weekend SAVE10 code use karein aur 10% extra bachayein kisi bhi order par.", Type="promo", TimeAgo="2 din pehle", IsRead=true, ActionLabel="Code Copy Karein", ActionUrl="/" },
+        new() { Id=7, Title="Account Security Alert", Message="Aapke account mein naya device se login kiya gaya hai. Agar aap nahi the to password change karein.", Type="system", TimeAgo="3 din pehle", IsRead=true, ActionLabel="Settings", ActionUrl="/settings" },
+        new() { Id=8, Title="Low Stock Warning", Message="Aapki wishlist ka item 'Sony WH-1000XM5' sirf 2 hi reh gaya hai!", Type="system", TimeAgo="4 din pehle", IsRead=true, ActionLabel="Abhi Khareedein", ActionUrl="/" },
+        new() { Id=9, Title="Promo Code Expiring", Message="Aapka SHOPWAVE20 code kal expire ho raha hai. Use kar lein!",  Type="promo", TimeAgo="5 din pehle", IsRead=true },
+        new() { Id=10, Title="Order Cancelled", Message="Order #SW-46992 aapki request par cancel kar diya gaya. Refund 3-5 days mein ayega.", Type="order", TimeAgo="1 hafta pehle", IsRead=true },
+    };
+
+    private IEnumerable<NotifItem> filteredNotifs => activeTab switch
+    {
+        "Orders" => notifications.Where(n => n.Type == "order"),
+        "Promos" => notifications.Where(n => n.Type == "promo"),
+        "System" => notifications.Where(n => n.Type is "system" or "review"),
+        _        => notifications
+    };
+
+    private int GetTabCount(string tab) => tab switch
+    {
+        "Orders" => notifications.Count(n => n.Type == "order"),
+        "Promos" => notifications.Count(n => n.Type == "promo"),
+        "System" => notifications.Count(n => n.Type is "system" or "review"),
+        _        => notifications.Count
+    };
+
+    private string GetIcon(string type) => type switch
+    {
+        "order"  => "bi-bag-check",
+        "promo"  => "bi-tag-fill",
+        "review" => "bi-star-fill",
+        _        => "bi-bell-fill"
+    };
+
+    private void ReadNotif(NotifItem n) => n.IsRead = true;
+    private void MarkAllRead()  => notifications.ForEach(n => n.IsRead = true);
+    private void ClearAll()     => notifications.Clear();
+}
+
+<style>
+    /* ── SUMMARY STRIP ── */
+    .notif-summary {
+        display: flex; align-items: center;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 18px 28px;
+        margin-bottom: 20px; gap: 0;
+    }
+    .ns-item { text-align: center; flex: 1; }
+    .ns-val  {
+        display: block; font-family: 'Syne', sans-serif;
+        font-size: 1.6rem; font-weight: 800; color: var(--text); line-height: 1;
+    }
+    .ns-val.unread { color: var(--primary); }
+    .ns-label { font-size: .74rem; color: var(--text-muted); }
+    .ns-divider { width: 1px; height: 36px; background: var(--border); margin: 0 12px; flex-shrink: 0; }
+
+    /* ── FILTER TABS ── */
+    .notif-tabs {
+        display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .notif-tab {
+        padding: 8px 18px; border-radius: var(--r-full);
+        background: var(--panel); border: 1px solid var(--border);
+        color: var(--text-2); cursor: pointer; font-size: .82rem;
+        font-family: 'Poppins', sans-serif; font-weight: 600;
+        transition: var(--t); display: flex; align-items: center; gap: 7px;
+    }
+    .notif-tab:hover { border-color: var(--border-light); }
+    .notif-tab.active { background: var(--primary); color: var(--text); border-color: var(--primary); }
+    .ntab-count {
+        background: rgba(0,0,0,0.15); padding: 1px 7px;
+        border-radius: var(--r-full); font-size: .68rem; font-weight: 700;
+    }
+    .notif-tab:not(.active) .ntab-count { background: var(--border); color: var(--text-muted); }
+
+    /* ── NOTIFICATIONS LIST ── */
+    .notif-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .notif-card {
+        display: flex; align-items: flex-start; gap: 16px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 18px 20px;
+        cursor: pointer; transition: var(--t); position: relative;
+    }
+    .notif-card:hover { border-color: var(--border-light); background: var(--panel); }
+    .notif-card.unread { border-left: 3px solid var(--primary); }
+
+    .notif-icon-wrap {
+        width: 44px; height: 44px; border-radius: var(--r-md);
+        display: grid; place-items: center; font-size: 1.1rem;
+        flex-shrink: 0; position: relative;
+    }
+    .notif-icon-wrap.order  { background:rgba(91,141,238,.12);  color:var(--primary); }
+    .notif-icon-wrap.promo  { background:rgba(244,162,97,.12);  color:var(--gold); }
+    .notif-icon-wrap.review { background:rgba(244,162,97,.12);  color:var(--gold); }
+    .notif-icon-wrap.system { background:rgba(240,98,146,.12);  color:var(--secondary); }
+
+    .unread-dot {
+        position: absolute; top: -3px; right: -3px;
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--primary); border: 2px solid var(--surface);
+    }
+
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-top {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; margin-bottom: 5px; flex-wrap: wrap;
+    }
+    .notif-title { font-size: .9rem; font-weight: 700; color: var(--text); }
+    .notif-time  { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+    .notif-msg   {
+        font-size: .82rem; color: var(--text-2);
+        line-height: 1.6; margin-bottom: 10px;
+    }
+
+    .notif-action-btn {
+        background: none; border: 1px solid var(--border);
+        border-radius: var(--r-full); color: var(--primary);
+        font-size: .75rem; font-weight: 700; padding: 5px 14px;
+        cursor: pointer; transition: var(--t);
+        display: inline-flex; align-items: center; gap: 5px;
+        font-family: 'Poppins', sans-serif;
+    }
+    .notif-action-btn:hover { background: rgba(91,141,238,.08); border-color: var(--primary); }
+
+    .notif-dismiss {
+        width: 30px; height: 30px; flex-shrink: 0;
+        background: none; border: 1px solid var(--border);
+        border-radius: 50%; color: var(--text-muted);
+        cursor: pointer; transition: var(--t);
+        display: grid; place-items: center; font-size: .85rem;
+        margin-top: 2px;
+    }
+    .notif-dismiss:hover { background: var(--danger-bg); border-color: rgba(240,98,146,.3); color: var(--danger); }
+
+    /* ── HEADER ROW ── */
+    .header-actions-row { display: flex; gap: 10px; align-items: center; }
+</style>
+

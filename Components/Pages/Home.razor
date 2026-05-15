@@ -1,0 +1,316 @@
+@page "/"
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>ShopWave — Home</PageTitle>
+
+<!-- BENTO HERO SECTION -->
+<div class="bento-container">
+    <div class="bento-grid-top">
+        <!-- MAIN SHOWCASE -->
+        <div class="bento-card card-main">
+            <div class="card-content">
+                <div class="pill-label"><i class="bi bi-grid-fill"></i> Music is Classic</div>
+                <h1 class="hero-title">Sequoia Inspiring<br/>Musico.</h1>
+                
+                <div class="hero-feature">
+                    <div class="feature-num">01</div>
+                    <div class="feature-line"></div>
+                    <div class="feature-text">
+                        <strong>Clear Sounds</strong>
+                        <span>Making your dream music come true stay with Sequios Sounds!</span>
+                    </div>
+                </div>
+
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-lg btn-pill" @onclick='() => Navigation.NavigateTo("/products")'>
+                        View All Products <i class="bi bi-arrow-up-right"></i>
+                    </button>
+                </div>
+                
+                <div class="hero-socials">
+                    <span>Follow us on:</span>
+                    <i class="bi bi-twitter"></i>
+                    <i class="bi bi-tiktok"></i>
+                    <i class="bi bi-instagram"></i>
+                    <i class="bi bi-linkedin"></i>
+                </div>
+            </div>
+            <div class="card-visual">
+                <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80" alt="Headphones" class="floating-product" />
+                <button class="expand-btn"><i class="bi bi-code"></i></button>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE: 2 COLUMNS -->
+        <div class="bento-side-cols">
+            <div class="bento-col-inner">
+                <!-- POPULAR COLORS -->
+                <div class="bento-card card-colors">
+                    <h4 class="card-title-sm">Popular Colors</h4>
+                    <div class="color-picker">
+                        <span class="color-dot" style="background:#4B7BFF; box-shadow:0 0 0 3px rgba(75,123,255,0.2);"></span>
+                        <span class="color-dot" style="background:#FFB74D;"></span>
+                        <span class="color-dot" style="background:#00D4AA;"></span>
+                        <span class="color-dot" style="background:#FF4D6D;"></span>
+                        <span class="color-dot" style="background:#00E5FF;"></span>
+                    </div>
+                </div>
+                
+                <!-- NEW GEN X-BUD -->
+                <div class="bento-card card-xbud">
+                    <h4 class="card-title-sm">New Gen<br/>X-Bud</h4>
+                    <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&q=80" alt="Earbuds" />
+                    <button class="circle-btn-tl"><i class="bi bi-arrow-up-right"></i></button>
+                </div>
+            </div>
+
+            <!-- LIGHT GREY SURFACE -->
+            <div class="bento-card card-surface">
+                <img src="https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=400&q=80" alt="Headphones person" />
+                <button class="circle-btn-tr"><i class="bi bi-arrow-up-right"></i></button>
+                <div class="surface-text">
+                    <h4>Light Grey Surface<br/>Headphone</h4>
+                    <span>Boosted with bass</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div class="bento-grid-bottom">
+        <!-- MORE PRODUCTS -->
+        <div class="bento-card card-more">
+            <div class="more-header">
+                <div>
+                    <h4 class="card-title-sm">More Products</h4>
+                    <span class="sub-text">460 plus items.</span>
+                </div>
+                <button class="heart-btn"><i class="bi bi-suit-heart-fill"></i></button>
+            </div>
+            <div class="more-thumbs">
+                <img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=200&q=80" />
+                <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=200&q=80" />
+                <img src="https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=200&q=80" />
+            </div>
+        </div>
+
+        <!-- DOWNLOADS -->
+        <div class="bento-card card-downloads">
+            <div class="avatars-group">
+                <img src="https://i.pravatar.cc/100?img=11" />
+                <img src="https://i.pravatar.cc/100?img=12" />
+                <img src="https://i.pravatar.cc/100?img=13" />
+            </div>
+            <div class="download-circle">
+                <h3>5m+</h3>
+                <span>Downloads</span>
+            </div>
+            <div class="rating-pill">⭐ 4.6 reviews</div>
+        </div>
+
+        <!-- LISTENING RELEASED -->
+        <div class="bento-card card-listening">
+            <div class="listen-content">
+                <span class="badge-pop">🔥 Popular</span>
+                <h3 class="card-title-md">Listening Has<br/>Been Released</h3>
+                <div class="listen-thumbs">
+                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80" class="circle-thumb" />
+                    <img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=100&q=80" class="circle-thumb" />
+                </div>
+            </div>
+            <div class="listen-visual">
+                <img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400&q=80" alt="Speaker" />
+                <div class="rating-float">⭐ 4.7</div>
+                <button class="circle-btn-tr"><i class="bi bi-arrow-up-right"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EXISTING SECTIONS ADAPTED TO NEW STYLE -->
+
+<div class="soft-section stats-bar-soft mt-5">
+    <div class="stat-item">
+        <span class="hs-val text-primary">50K+</span>
+        <span class="hs-label">Products</span>
+    </div>
+    <div class="stat-item">
+        <span class="hs-val text-primary">200K+</span>
+        <span class="hs-label">Happy Customers</span>
+    </div>
+    <div class="stat-item">
+        <span class="hs-val text-primary">4.8 ★</span>
+        <span class="hs-label">Average Rating</span>
+    </div>
+</div>
+
+<div id="categories" class="soft-section categories-section mt-5">
+    <h2 class="section-title text-center text-dark">Shop by Category</h2>
+    <div class="cat-grid-soft">
+        <div class="bento-card cat-card" @onclick='() => NavigateToCategory("Electronics")'>
+            <div class="cat-icon"><i class="bi bi-laptop"></i></div>
+            <h4>Electronics</h4>
+        </div>
+        <div class="bento-card cat-card" @onclick='() => NavigateToCategory("Clothing")'>
+            <div class="cat-icon"><i class="bi bi-bag"></i></div>
+            <h4>Clothing</h4>
+        </div>
+        <div class="bento-card cat-card" @onclick='() => NavigateToCategory("Books")'>
+            <div class="cat-icon"><i class="bi bi-book"></i></div>
+            <h4>Books</h4>
+        </div>
+        <div class="bento-card cat-card" @onclick='() => NavigateToCategory("Home & Living")'>
+            <div class="cat-icon"><i class="bi bi-house-heart"></i></div>
+            <h4>Home & Living</h4>
+        </div>
+    </div>
+</div>
+
+<div class="soft-section deal-section-soft mt-5">
+    <div class="deal-content">
+        <span class="badge badge-danger mb-2">LIMITED TIME OFFER</span>
+        <h2 class="section-title mb-2 text-dark">Deal of the Day</h2>
+        <p class="text-muted mb-4">Get up to 50% off on premium noise-canceling headphones. Don't miss out on this exclusive offer!</p>
+        <div class="countdown-timer mb-4">
+            <div class="time-box"><span>04</span><small>Hours</small></div>
+            <div class="time-box"><span>32</span><small>Mins</small></div>
+            <div class="time-box"><span>15</span><small>Secs</small></div>
+        </div>
+        <button class="btn btn-primary btn-pill" @onclick='() => Navigation.NavigateTo("/products")'>Shop Deal Now</button>
+    </div>
+</div>
+
+<!-- FOOTER IN MAINLAYOUT -->
+
+@code {
+    private async Task ScrollTo(string id)
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToElement", id);
+    }
+
+    private void NavigateToCategory(string category)
+    {
+        Navigation.NavigateTo($"/products?category={category}");
+    }
+}
+
+<style>
+    /* ── BENTO GRID ── */
+    .bento-container {
+        display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px;
+    }
+    .bento-grid-top {
+        display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px;
+        min-height: 480px;
+    }
+    .bento-side-cols {
+        display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px;
+    }
+    .bento-col-inner {
+        display: flex; flex-direction: column; gap: 20px;
+    }
+    .bento-grid-bottom {
+        display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 20px;
+    }
+
+    .bento-card {
+        background: var(--surface);
+        border-radius: var(--r-xl);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        padding: 24px; position: relative; overflow: hidden;
+        transition: var(--t);
+    }
+    .bento-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+
+    /* ── MAIN SHOWCASE ── */
+    .card-main { display: flex; padding: 40px; }
+    .card-content { flex: 1; display: flex; flex-direction: column; z-index: 2; }
+    .pill-label {
+        background: var(--panel); border: 1px solid var(--border); padding: 6px 14px;
+        border-radius: var(--r-full); display: inline-flex; align-items: center; gap: 6px;
+        font-size: 0.8rem; font-weight: 600; color: var(--text-2); width: fit-content; margin-bottom: 30px;
+    }
+    .hero-title {
+        font-family: var(--font-display); font-size: 3.5rem; font-weight: 800; line-height: 1.1;
+        color: var(--text); margin-bottom: 40px; letter-spacing: -1px;
+    }
+    .hero-feature { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; }
+    .feature-num { font-family: var(--font-display); font-size: 2.5rem; color: transparent; -webkit-text-stroke: 1px var(--text-muted); font-weight: 800; }
+    .feature-line { flex: 1; height: 1px; background: dashed 1px var(--text-muted); opacity: 0.5; max-width: 100px; }
+    .feature-text { display: flex; flex-direction: column; }
+    .feature-text strong { font-weight: 700; color: var(--text); font-size: 1.1rem; }
+    .feature-text span { font-size: 0.85rem; color: var(--text-muted); max-width: 200px; line-height: 1.4; }
+    .btn-pill { border-radius: var(--r-full); padding: 14px 28px; }
+    .hero-socials { margin-top: auto; display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 0.9rem; }
+    .hero-socials i { width: 32px; height: 32px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; cursor: pointer; transition: var(--t); }
+    .hero-socials i:hover { background: var(--primary); color: var(--text); }
+
+    .card-visual { position: absolute; right: -20px; top: 20px; width: 60%; height: 100%; z-index: 1; }
+    .floating-product { width: 100%; height: 100%; object-fit: contain; animation: float 6s ease-in-out infinite; }
+    @@keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0); } }
+    .expand-btn { position: absolute; bottom: 40px; right: 40px; width: 44px; height: 44px; border-radius: 50%; background: var(--panel); border: none; box-shadow: var(--shadow-md); color: var(--text); cursor: pointer; }
+
+    /* ── RIGHT COLS ── */
+    .card-title-sm { font-family: var(--font-body); font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 16px; }
+    .card-colors { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .color-picker { display: flex; gap: 10px; }
+    .color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; transition: var(--t); }
+    .color-dot:hover { transform: scale(1.2); }
+    
+    .card-xbud { flex: 2; position: relative; padding: 0; }
+    .card-xbud h4 { position: absolute; top: 24px; left: 24px; z-index: 2; }
+    .card-xbud img { width: 100%; height: 100%; object-fit: cover; }
+    .circle-btn-tl, .circle-btn-tr { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: var(--panel); border: none; box-shadow: var(--shadow-sm); cursor: pointer; z-index: 3; transition: var(--t); }
+    .circle-btn-tl { top: 20px; right: 20px; } .circle-btn-tr { top: 20px; right: 20px; }
+    .circle-btn-tl:hover, .circle-btn-tr:hover { background: var(--primary); color: var(--text); }
+
+    .card-surface { padding: 0; position: relative; }
+    .card-surface img { width: 100%; height: 100%; object-fit: cover; }
+    .surface-text { position: absolute; bottom: 24px; left: 24px; z-index: 2; }
+    .surface-text h4 { font-family: var(--font-body); font-weight: 600; font-size: 1.1rem; color: var(--text); line-height: 1.3; }
+    .surface-text span { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ── BOTTOM ROW ── */
+    .card-more { display: flex; flex-direction: column; justify-content: space-between; }
+    .more-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .sub-text { font-size: 0.8rem; color: var(--text-muted); }
+    .heart-btn { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,77,109,0.1); color: var(--danger); border: none; display: grid; place-items: center; }
+    .more-thumbs { display: flex; gap: 10px; margin-top: 16px; }
+    .more-thumbs img { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; background: var(--panel-2); }
+
+    .card-downloads { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .avatars-group { display: flex; margin-bottom: 12px; }
+    .avatars-group img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -10px; }
+    .avatars-group img:first-child { margin-left: 0; }
+    .download-circle { width: 100px; height: 100px; border-radius: 50%; background: var(--primary); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: var(--shadow-primary); }
+    .download-circle h3 { margin: 0; font-weight: 800; font-size: 1.5rem; }
+    .download-circle span { font-size: 0.7rem; }
+    .rating-pill { background: var(--panel); padding: 6px 14px; border-radius: var(--r-full); font-size: 0.8rem; font-weight: 600; box-shadow: var(--shadow-sm); }
+
+    .card-listening { display: flex; padding: 0; position: relative; }
+    .listen-content { flex: 1; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+    .badge-pop { display: inline-block; padding: 4px 10px; background: rgba(255,183,77,0.2); color: #E65100; font-size: 0.75rem; font-weight: 700; border-radius: var(--r-full); width: fit-content; margin-bottom: 16px; }
+    .card-title-md { font-family: var(--font-body); font-weight: 600; font-size: 1.3rem; color: var(--text); line-height: 1.2; }
+    .listen-thumbs { display: flex; gap: 8px; margin-top: auto; }
+    .circle-thumb { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
+    .listen-visual { width: 45%; position: relative; }
+    .listen-visual img { width: 100%; height: 100%; object-fit: cover; }
+    .rating-float { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: var(--r-full); font-size: 0.8rem; font-weight: 700; color: var(--text); }
+
+    /* ── SOFT ADAPTED SECTIONS ── */
+    .soft-section {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 40px; box-shadow: var(--shadow-sm);
+    }
+    .cat-grid-soft { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 20px; }
+    .stats-bar-soft { display: flex; justify-content: space-around; padding: 30px; text-align: center; }
+
+    @@media (max-width: 1024px) {
+        .bento-grid-top { grid-template-columns: 1fr; }
+        .bento-grid-bottom { grid-template-columns: 1fr; }
+        .cat-grid-soft { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+

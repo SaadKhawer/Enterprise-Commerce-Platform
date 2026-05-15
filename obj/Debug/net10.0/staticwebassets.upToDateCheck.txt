@@ -1,0 +1,8 @@
+wwwroot\css\app.css
+wwwroot\images\hero_banner.png
+wwwroot\images\hero_banner_v2.png
+C:\Users\saads\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.8\build\..\_framework\blazor.web.js
+C:\Users\saads\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.8\build\..\_framework\blazor.server.js
+C:\Users\saads\Desktop\ShopWaveBlazor\wwwroot\css\app.css
+C:\Users\saads\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.8\_framework\blazor.web.js
+C:\Users\saads\.nuget\packages\microsoft.aspnetcore.app.internal.assets\10.0.8\_framework\blazor.server.js

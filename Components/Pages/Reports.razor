@@ -1,0 +1,537 @@
+@page "/reports"
+@using Microsoft.EntityFrameworkCore
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject IDbContextFactory<ShopWaveBlazor.Web.ECommerceAPI.Data.ECommerceDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>ShopWave — Reports</PageTitle>
+
+@if (!AuthService.IsAuthenticated || !AuthService.IsAdmin)
+{
+    <div class="access-denied-wrap">
+        <div class="ad-orb ad-orb1"></div>
+        <div class="ad-orb ad-orb2"></div>
+        <div class="access-denied-card">
+            <div class="ad-icon"><i class="bi bi-shield-lock-fill"></i></div>
+            <h2>Access Denied</h2>
+            <p>Ye page sirf <strong>Admin</strong> ke liye reserved hai.</p>
+            <div class="ad-actions">
+                <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/")'>
+                    <i class="bi bi-house"></i> Return to Home
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else if (isLoading)
+{
+    <div class="reports-skeleton">
+        <div class="skeleton" style="height:160px; border-radius:20px; margin-bottom:24px;"></div>
+        <div class="rep-stat-grid">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="skeleton" style="height:110px; border-radius:16px;"></div>
+            }
+        </div>
+        <div class="skeleton" style="height:320px; border-radius:16px; margin-top:20px;"></div>
+    </div>
+}
+else
+{
+    <div class="reports-wrapper" id="reports-pdf-content">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <div>
+            <h2>Reports & Analytics</h2>
+            <div class="breadcrumb">
+                Home <i class="bi bi-chevron-right"></i>
+                <span>Reports</span>
+            </div>
+        </div>
+        <div class="rep-header-actions">
+            <div class="rep-period-tabs">
+                @foreach (var p in new[] { "7D", "30D", "3M", "1Y" })
+                {
+                    <button class="rpt-btn @(activePeriod == p ? "active" : "")"
+                            aria-label="Filter period: @p"
+                            @onclick="() => SetPeriod(p)">@p</button>
+                }
+            </div>
+            <button class="btn btn-primary btn-sm" @onclick="ExportReport" aria-label="Export report as PDF">
+                <i class="bi bi-file-earmark-arrow-down"></i> Export PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="rep-stat-grid">
+        <div class="rep-stat-card blue">
+            <div class="rsc-top">
+                <div class="rsc-icon"><i class="bi bi-currency-dollar"></i></div>
+                <span class="rsc-trend up"><i class="bi bi-arrow-up"></i> 14.2%</span>
+            </div>
+            <div class="rsc-val">Rs. @totalRevenue.ToString("N0")</div>
+            <div class="rsc-label">Total Revenue</div>
+            <div class="rsc-mini-bar"><div class="rmb-fill" style="width:72%"></div></div>
+        </div>
+        <div class="rep-stat-card pink">
+            <div class="rsc-top">
+                <div class="rsc-icon"><i class="bi bi-bag-check"></i></div>
+                <span class="rsc-trend up"><i class="bi bi-arrow-up"></i> 8.5%</span>
+            </div>
+            <div class="rsc-val">@totalOrders</div>
+            <div class="rsc-label">Total Orders</div>
+            <div class="rsc-mini-bar"><div class="rmb-fill pink" style="width:58%"></div></div>
+        </div>
+        <div class="rep-stat-card green">
+            <div class="rsc-top">
+                <div class="rsc-icon"><i class="bi bi-people"></i></div>
+                <span class="rsc-trend up"><i class="bi bi-arrow-up"></i> 22.1%</span>
+            </div>
+            <div class="rsc-val">@totalCustomers</div>
+            <div class="rsc-label">New Customers</div>
+            <div class="rsc-mini-bar"><div class="rmb-fill green" style="width:85%"></div></div>
+        </div>
+        <div class="rep-stat-card gold">
+            <div class="rsc-top">
+                <div class="rsc-icon"><i class="bi bi-box-seam"></i></div>
+                <span class="rsc-trend down"><i class="bi bi-arrow-down"></i> 3.1%</span>
+            </div>
+            <div class="rsc-val">@totalProducts</div>
+            <div class="rsc-label">Products Sold</div>
+            <div class="rsc-mini-bar"><div class="rmb-fill gold" style="width:44%"></div></div>
+        </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div class="rep-charts-row">
+
+        <!-- REVENUE TREND CHART -->
+        <div class="glass-card rep-chart-main">
+            <div class="card-header-premium">
+                <h4><i class="bi bi-graph-up-arrow"></i> Revenue Trend</h4>
+                <span class="chart-sub">@activePeriod period</span>
+            </div>
+            <div style="padding:16px 20px; height:280px;">
+                <canvas id="reportsRevenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- ORDER STATUS DONUT -->
+        <div class="glass-card rep-donut-card">
+            <div class="card-header-premium">
+                <h4><i class="bi bi-pie-chart"></i> Order Status</h4>
+            </div>
+            <div class="donut-wrap">
+                <svg viewBox="0 0 120 120" class="donut-svg">
+                    <circle cx="60" cy="60" r="45" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="16" />
+                    <!-- Delivered: 60% -->
+                    <circle cx="60" cy="60" r="45" fill="none" stroke="#5b8dee" stroke-width="16"
+                            stroke-dasharray="169.6 282.6" stroke-dashoffset="0"
+                            transform="rotate(-90 60 60)" />
+                    <!-- Pending: 25% -->
+                    <circle cx="60" cy="60" r="45" fill="none" stroke="#f4a261" stroke-width="16"
+                            stroke-dasharray="70.7 282.6" stroke-dashoffset="-169.6"
+                            transform="rotate(-90 60 60)" />
+                    <!-- Cancelled: 15% -->
+                    <circle cx="60" cy="60" r="45" fill="none" stroke="#f06292" stroke-width="16"
+                            stroke-dasharray="42.4 282.6" stroke-dashoffset="-240.3"
+                            transform="rotate(-90 60 60)" />
+                    <text x="60" y="56" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="Syne, sans-serif">@totalOrders</text>
+                    <text x="60" y="68" text-anchor="middle" fill="#5c6080" font-size="6" font-family="Poppins, sans-serif">ORDERS</text>
+                </svg>
+            </div>
+            <div class="donut-legend">
+                <div class="dl-item"><span class="dl-dot blue"></span><span>Delivered</span><strong>60%</strong></div>
+                <div class="dl-item"><span class="dl-dot gold"></span><span>Pending</span><strong>25%</strong></div>
+                <div class="dl-item"><span class="dl-dot pink"></span><span>Cancelled</span><strong>15%</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM ROW: TOP CATEGORIES + TOP CUSTOMERS -->
+    <div class="rep-bottom-row">
+
+        <!-- TOP CATEGORIES -->
+        <div class="glass-card">
+            <div class="card-header-premium">
+                <h4><i class="bi bi-tag"></i> Top Categories</h4>
+                <span>By Revenue</span>
+            </div>
+            <div class="rep-cat-list">
+                @foreach (var cat in topCategories)
+                {
+                    <div class="rep-cat-row">
+                        <div class="rcat-icon-wrap @cat.Color">
+                            <i class="bi @cat.Icon"></i>
+                        </div>
+                        <div class="rcat-info">
+                            <div class="rcat-top">
+                                <strong>@cat.Name</strong>
+                                <span class="rcat-rev">Rs. @cat.Revenue.ToString("N0")</span>
+                            </div>
+                            <div class="rcat-bar-wrap">
+                                <div class="rcat-bar">
+                                    <div class="rcat-bar-fill @cat.Color" style="width:@(cat.Pct)%"></div>
+                                </div>
+                                <span class="rcat-pct">@cat.Pct%</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- TOP CUSTOMERS -->
+        <div class="glass-card">
+            <div class="card-header-premium">
+                <h4><i class="bi bi-trophy"></i> Top Customers</h4>
+                <span>By Spend</span>
+            </div>
+            <div class="top-custs-list">
+                @foreach (var (cust, idx) in topCustomers.Select((c, i) => (c, i)))
+                {
+                    <div class="top-cust-row">
+                        <div class="tc-rank @(idx == 0 ? "gold" : idx == 1 ? "silver" : "bronze")">@(idx + 1)</div>
+                        <div class="tc-avatar" style="background:@GetAvatarColor(cust.Name)">@cust.Name[0]</div>
+                        <div class="tc-info">
+                            <strong>@cust.Name</strong>
+                            <span>@cust.Orders orders</span>
+                        </div>
+                        <div class="tc-spend">Rs. @cust.Spend.ToString("N0")</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- MONTHLY SUMMARY TABLE -->
+        <div class="glass-card rep-table-card">
+            <div class="card-header-premium">
+                <h4><i class="bi bi-table"></i> Monthly Summary</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Orders</th>
+                            <th>Revenue</th>
+                            <th>Growth</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in monthlySummary)
+                        {
+                            <tr>
+                                <td><strong class="text-white">@row.Month</strong></td>
+                                <td>@row.Orders</td>
+                                <td class="text-primary fw-bold">Rs. @row.Revenue.ToString("N0")</td>
+                                <td>
+                                    <span class="badge @(row.Growth >= 0 ? "badge-success" : "badge-danger")">
+                                        @(row.Growth >= 0 ? "↑" : "↓") @Math.Abs(row.Growth)%
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private string activePeriod = "30D";
+    private decimal totalRevenue;
+    private int totalOrders, totalCustomers, totalProducts;
+
+    private record ChartBar(string Day, decimal Value, int Pct, bool IsHighest);
+    private record CategoryItem(string Name, string Icon, string Color, decimal Revenue, int Pct);
+    private record CustomerItem(string Name, int Orders, decimal Spend);
+    private record MonthlyRow(string Month, int Orders, decimal Revenue, int Growth);
+
+    private List<ChartBar> chartBars = new();
+    private List<CategoryItem> topCategories = new();
+    private List<CustomerItem> topCustomers = new();
+    private List<MonthlyRow> monthlySummary = new();
+
+    private bool pendingChart = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(600); // simulate load
+        LoadMockData();
+        isLoading = false;
+        pendingChart = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (pendingChart)
+        {
+            pendingChart = false;
+            try
+            {
+                await Task.Delay(100);
+                var labels = chartBars.Select(c => c.Day).ToArray();
+                var values = chartBars.Select(c => (int)c.Value).ToArray();
+                await JSRuntime.InvokeVoidAsync("renderRevenueChart", "reportsRevenueChart", labels, values);
+            }
+            catch { }
+        }
+    }
+
+    private void SetPeriod(string p)
+    {
+        activePeriod = p;
+        LoadMockData();
+        pendingChart = true;
+    }
+
+    private void LoadMockData()
+    {
+        totalRevenue   = 842_500m;
+        totalOrders    = 1_243;
+        totalCustomers = 387;
+        totalProducts  = 2_156;
+
+        var raw = new[] { 42000, 58000, 35000, 71000, 63000, 89000, 95000, 72000, 68000, 81000, 74000, 66000, 88000, 92000 };
+        int max = raw.Max();
+        chartBars = raw.Select((v, i) => new ChartBar(
+            $"W{i + 1}", v, (int)(v * 100.0 / max), v == max
+        )).ToList();
+
+        topCategories = new()
+        {
+            new("Electronics",  "bi-cpu",         "blue",  320_000m, 82),
+            new("Clothing",     "bi-bag",          "pink",  210_000m, 54),
+            new("Home & Decor", "bi-house",        "gold",  155_000m, 40),
+            new("Books",        "bi-book",         "green", 88_000m,  23),
+            new("Sports",       "bi-trophy",       "purple",69_500m,  18),
+        };
+
+        topCustomers = new()
+        {
+            new("Ahsan Malik",    24, 128_400m),
+            new("Sara Noor",      18,  94_200m),
+            new("Bilal Ahmed",    15,  81_750m),
+            new("Zara Hussain",   12,  67_300m),
+            new("Hassan Khan",     9,  54_900m),
+        };
+
+        monthlySummary = new()
+        {
+            new("January",  210, 185_000m, 0),
+            new("February", 198, 172_500m, -7),
+            new("March",    245, 214_200m, 24),
+            new("April",    287, 253_800m, 18),
+            new("May (YTD)",107,  17_000m, 14),
+        };
+    }
+
+    private async Task ExportReport()
+    {
+        await JSRuntime.InvokeVoidAsync("generatePDF", "reports-pdf-content", $"ShopWave_Analytics_{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    private string GetAvatarColor(string name)
+    {
+        var colors = new[] { "#5b8dee", "#f06292", "#2ec4b6", "#f4c26a", "#a18cd1" };
+        var idx = Math.Abs(name.GetHashCode()) % colors.Length;
+        return colors[idx];
+    }
+}
+
+<style>
+    /* ── ACCESS DENIED ── */
+    .access-denied-wrap {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 60vh; position: relative; overflow: hidden;
+    }
+    .ad-orb { position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; }
+    .ad-orb1 { width:300px; height:300px; top:-80px; left:-80px; background:radial-gradient(circle,rgba(91,141,238,.12),transparent); }
+    .ad-orb2 { width:200px; height:200px; bottom:-40px; right:-40px; background:radial-gradient(circle,rgba(240,98,146,.1),transparent); }
+    .access-denied-card {
+        background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl);
+        padding:48px 40px; text-align:center; max-width:440px; position:relative; z-index:1;
+    }
+    .ad-icon { font-size:3rem; color:var(--danger); margin-bottom:16px; }
+    .access-denied-card h2 { font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:800; color: var(--text); margin-bottom:12px; }
+    .access-denied-card p { color:var(--text-2); line-height:1.8; margin-bottom:28px; }
+    .ad-actions { display:flex; gap:12px; justify-content:center; }
+
+    /* ── SKELETON ── */
+    .rep-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+
+    /* ── PAGE HEADER EXTRAS ── */
+    .rep-header-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .rep-period-tabs { display:flex; gap:4px; background:var(--panel); border:1px solid var(--border); border-radius:var(--r-full); padding:4px; }
+    .rpt-btn {
+        padding:6px 16px; border-radius:var(--r-full); border:none;
+        background:transparent; color:var(--text-2); font-size:.78rem;
+        font-weight:700; font-family:var(--font-body); cursor:pointer; transition:var(--t);
+    }
+    .rpt-btn.active { background:var(--primary); color: #111018; }
+    .rpt-btn:not(.active):hover { color: var(--text); }
+
+    /* ── KPI STAT CARDS ── */
+    .rep-stat-card {
+        background:#111018 !important; border:1px solid rgba(255,255,255,0.1) !important;
+        border-radius:var(--r-xl); padding:20px 22px; transition:var(--t);
+        color: #FFFFFF !important;
+        --text: #FFFFFF;
+        --text-2: #E5E7EB;
+        --text-muted: #9CA3AF;
+        --primary: #D9F86B;
+        --border: rgba(255,255,255,0.1);
+        --border-light: rgba(255,255,255,0.05);
+        --panel: rgba(255,255,255,0.05);
+        --surface: #111018;
+    }
+    .rep-stat-card:hover { transform:translateY(-3px); border-color:var(--border-light); }
+    .rsc-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .rsc-icon {
+        width:38px; height:38px; border-radius:var(--r-md);
+        display:grid; place-items:center; font-size:1rem;
+    }
+    .rep-stat-card.blue  .rsc-icon { background:var(--secondary); color:var(--primary); }
+    .rep-stat-card.pink  .rsc-icon { background:var(--primary); color:#FFFFFF; }
+    .rep-stat-card.green .rsc-icon { background:var(--surface); border:1px solid var(--border); color:var(--primary); }
+    .rep-stat-card.gold  .rsc-icon { background:var(--panel-2); color:var(--primary); }
+
+    .rsc-trend { font-size:.72rem; font-weight:700; padding:3px 8px; border-radius:var(--r-full); }
+    .rsc-trend.up   { background:var(--success-bg); color:var(--success); }
+    .rsc-trend.down { background:var(--danger-bg); color:var(--danger); }
+    .rsc-val { font-family:var(--font-mono); font-size:1.5rem; font-weight:800; color: var(--text); line-height:1.1; }
+    .rsc-label { font-size:.75rem; color:var(--text-muted); margin-top:4px; margin-bottom:10px; }
+    .rsc-mini-bar { height:3px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .rmb-fill { height:100%; border-radius:3px; background:var(--primary); }
+    .rmb-fill.pink   { background:var(--secondary); }
+    .rmb-fill.green  { background:var(--success); }
+    .rmb-fill.gold   { background:var(--gold); }
+
+    /* ── CHARTS ROW ── */
+    .rep-charts-row { display:grid; grid-template-columns:1fr 280px; gap:20px; margin-bottom:20px; }
+    .chart-sub { font-size:.75rem; color:var(--text-muted); }
+
+    .rep-chart-body {
+        display:flex; gap:12px; padding:20px 22px; height:200px;
+    }
+    .chart-y-labels {
+        display:flex; flex-direction:column; justify-content:space-between;
+        align-items:flex-end; padding-bottom:22px;
+    }
+    .chart-y-labels span { font-size:.65rem; color:var(--text-muted); white-space:nowrap; }
+    .chart-bars-wrap { display:flex; align-items:flex-end; gap:6px; flex:1; }
+    .chart-bar-col { display:flex; flex-direction:column; align-items:center; flex:1; gap:5px; }
+    .chart-bar-track { flex:1; width:100%; display:flex; align-items:flex-end; position:relative; }
+    .chart-bar {
+        width:100%; border-radius:5px 5px 0 0;
+        background:var(--info-bg); min-height:6px;
+        transition:height .6s cubic-bezier(.34,1.56,.64,1); cursor:pointer; position:relative;
+    }
+    .chart-bar.highest { background:linear-gradient(180deg,var(--info),var(--info-bg)); }
+    .chart-bar:hover { background:var(--primary); }
+    .bar-tooltip {
+        position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+        background:var(--panel); border:1px solid var(--border); color: var(--text);
+        font-size:.68rem; padding:3px 7px; border-radius:var(--r-sm);
+        white-space:nowrap; opacity:0; pointer-events:none; transition:var(--t);
+    }
+    .chart-bar:hover .bar-tooltip { opacity:1; }
+    .bar-label { font-size:.65rem; color:var(--text-muted); }
+
+    /* ── DONUT ── */
+    .rep-donut-card { display:flex; flex-direction:column; }
+    .donut-wrap { display:flex; justify-content:center; padding:16px 0; }
+    .donut-svg { width:140px; height:140px; }
+    .donut-legend { display:flex; flex-direction:column; gap:8px; padding:0 20px 16px; }
+    .dl-item { display:flex; align-items:center; gap:10px; font-size:.8rem; color:var(--text-2); }
+    .dl-item strong { margin-left:auto; color: var(--text); font-size:.82rem; }
+    .dl-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+    .dl-dot.blue { background:var(--primary); }
+    .dl-dot.gold { background:var(--gold); }
+    .dl-dot.pink { background:var(--secondary); }
+
+    /* ── BOTTOM ROW ── */
+    .rep-bottom-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+
+    /* ── CATEGORY LIST ── */
+    .rep-cat-list { display:flex; flex-direction:column; gap:0; }
+    .rep-cat-row {
+        display:flex; align-items:center; gap:14px;
+        padding:12px 20px; border-bottom:1px solid var(--border);
+        transition:var(--t);
+    }
+    .rep-cat-row:last-child { border-bottom:none; }
+    .rep-cat-row:hover { background:var(--panel); }
+    .rcat-icon-wrap {
+        width:36px; height:36px; border-radius:var(--r-md);
+        display:grid; place-items:center; font-size:.9rem; flex-shrink:0;
+    }
+    .rcat-icon-wrap.blue   { background:var(--secondary); color:var(--primary); }
+    .rcat-icon-wrap.pink   { background:var(--primary); color:#FFFFFF; }
+    .rcat-icon-wrap.gold   { background:var(--panel-2); color:var(--primary); }
+    .rcat-icon-wrap.green  { background:var(--surface); border:1px solid var(--border); color:var(--primary); }
+    .rcat-icon-wrap.purple { background:rgba(0,0,0,0.05); color:var(--primary); }
+    .rcat-info { flex:1; min-width:0; }
+    .rcat-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .rcat-top strong { font-size:.82rem; color: var(--text); }
+    .rcat-rev { font-size:.75rem; color:var(--primary); font-weight:700; }
+    .rcat-bar-wrap { display:flex; align-items:center; gap:8px; }
+    .rcat-bar { flex:1; height:4px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .rcat-bar-fill { height:100%; border-radius:4px; }
+    .rcat-bar-fill.blue   { background:var(--primary); }
+    .rcat-bar-fill.pink   { background:var(--secondary); }
+    .rcat-bar-fill.gold   { background:var(--gold); }
+    .rcat-bar-fill.green  { background:var(--success); }
+    .rcat-bar-fill.purple { background:var(--purple); }
+    .rcat-pct { font-size:.7rem; color:var(--text-muted); white-space:nowrap; }
+
+    /* ── TOP CUSTOMERS ── */
+    .top-custs-list { display:flex; flex-direction:column; }
+    .top-cust-row {
+        display:flex; align-items:center; gap:12px;
+        padding:12px 20px; border-bottom:1px solid var(--border);
+        transition:var(--t);
+    }
+    .top-cust-row:last-child { border-bottom:none; }
+    .top-cust-row:hover { background:var(--panel); }
+    .tc-rank {
+        width:24px; height:24px; border-radius:50%;
+        display:grid; place-items:center;
+        font-size:.7rem; font-weight:800; flex-shrink:0;
+    }
+    .tc-rank.gold   { background:rgba(255,215,0,.15);   color:#ffd700; border:1px solid rgba(255,215,0,.3); }
+    .tc-rank.silver { background:rgba(192,192,192,.12); color:#c0c0c0; border:1px solid rgba(192,192,192,.2); }
+    .tc-rank.bronze { background:rgba(205,127,50,.12);  color:#cd7f32; border:1px solid rgba(205,127,50,.2); }
+    .tc-avatar {
+        width:34px; height:34px; border-radius:50%;
+        display:grid; place-items:center;
+        font-weight:800; font-size:.82rem; color: #FFFFFF; flex-shrink:0;
+    }
+    .tc-info { flex:1; min-width:0; }
+    .tc-info strong { display:block; font-size:.82rem; color: var(--text); }
+    .tc-info span   { font-size:.72rem; color:var(--text-muted); }
+    .tc-spend { font-weight:800; color:var(--primary); font-size:.82rem; white-space:nowrap; }
+
+    /* ── TABLE CARD ── */
+    .badge-success { background:var(--success-bg); color:var(--success); padding:3px 8px; border-radius:var(--r-full); font-size:.72rem; font-weight:700; }
+    .badge-danger  { background:var(--danger-bg); color:var(--danger); padding:3px 8px; border-radius:var(--r-full); font-size:.72rem; font-weight:700; }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 1024px) {
+        .rep-stat-grid  { grid-template-columns:repeat(2,1fr); }
+        .rep-charts-row { grid-template-columns:1fr; }
+        .rep-bottom-row { grid-template-columns:1fr; }
+    }
+    @@media (max-width: 640px) {
+        .rep-stat-grid { grid-template-columns:1fr 1fr; }
+        .rep-header-actions { flex-direction:column; align-items:flex-start; }
+    }
+</style>
+

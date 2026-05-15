@@ -1,0 +1,521 @@
+@page "/payments"
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ShopWaveBlazor.Web.ECommerceAPI.Data.ECommerceDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>ShopWave — Payments</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Payments</h2>
+        <div class="breadcrumb">Home <i class="bi bi-chevron-right"></i> <span>Payments</span></div>
+    </div>
+    <button class="btn btn-primary btn-sm" @onclick="ExportCSV" aria-label="Export payment data">
+        <i class="bi bi-download"></i> Export
+    </button>
+</div>
+
+<!-- STATS ROW -->
+<div class="pay-stats-row">
+    <div class="pay-stat-card">
+        <div class="pstat-icon blue"><i class="bi bi-currency-dollar"></i></div>
+        <div class="pstat-info">
+            <span class="pstat-val">Rs. @totalReceived.ToString("N0")</span>
+            <span class="pstat-label">Total Received</span>
+        </div>
+        <span class="pstat-trend up"><i class="bi bi-arrow-up-short"></i> 14%</span>
+    </div>
+    <div class="pay-stat-card">
+        <div class="pstat-icon green"><i class="bi bi-check-circle"></i></div>
+        <div class="pstat-info">
+            <span class="pstat-val">@payments.Count(p => p.Status == "Completed")</span>
+            <span class="pstat-label">Successful</span>
+        </div>
+        <span class="pstat-trend up"><i class="bi bi-arrow-up-short"></i> 8%</span>
+    </div>
+    <div class="pay-stat-card">
+        <div class="pstat-icon gold"><i class="bi bi-clock-history"></i></div>
+        <div class="pstat-info">
+            <span class="pstat-val">@payments.Count(p => p.Status == "Pending")</span>
+            <span class="pstat-label">Pending</span>
+        </div>
+        <span class="pstat-trend neutral">—</span>
+    </div>
+    <div class="pay-stat-card">
+        <div class="pstat-icon pink"><i class="bi bi-x-circle"></i></div>
+        <div class="pstat-info">
+            <span class="pstat-val">@payments.Count(p => p.Status == "Failed")</span>
+            <span class="pstat-label">Failed</span>
+        </div>
+        <span class="pstat-trend down"><i class="bi bi-arrow-down-short"></i> 3%</span>
+    </div>
+</div>
+
+<!-- METHOD BREAKDOWN -->
+<div class="pay-method-row">
+    @foreach (var m in methodStats)
+    {
+        <div class="method-card">
+            <div class="method-icon">@m.Icon</div>
+            <div class="method-info">
+                <strong>@m.Label</strong>
+                <span>@m.Count transactions</span>
+            </div>
+            <div class="method-bar-wrap">
+                <div class="method-bar">
+                    <div class="method-bar-fill" style="width:@m.Pct%"></div>
+                </div>
+                <span class="method-pct">@m.Pct%</span>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- TOOLBAR -->
+<div class="pay-toolbar">
+    <div class="pay-search">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Order ID ya amount se search..."
+               aria-label="Search payments"
+               @bind="searchQuery" @bind:event="oninput" />
+    </div>
+    <div class="pay-filters">
+        <select class="form-control form-control-sm" @bind="filterStatus" aria-label="Filter by status">
+            <option value="">All Status</option>
+            <option value="Completed">Completed</option>
+            <option value="Pending">Pending</option>
+            <option value="Failed">Failed</option>
+            <option value="Refunded">Refunded</option>
+        </select>
+        <select class="form-control form-control-sm" @bind="filterMethod" aria-label="Filter by method">
+            <option value="">All Methods</option>
+            <option value="Card">Card</option>
+            <option value="JazzCash">JazzCash</option>
+            <option value="EasyPaisa">EasyPaisa</option>
+            <option value="COD">COD</option>
+        </select>
+    </div>
+</div>
+
+<!-- PAYMENTS TABLE -->
+<div class="glass-card">
+    <div style="overflow-x:auto;">
+        <table class="data-table pay-table">
+            <thead>
+                <tr>
+                    <th>Transaction</th>
+                    <th>Order</th>
+                    <th>Customer</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in filteredPayments)
+                {
+                    <tr>
+                        <td>
+                            <span class="txn-id">#TXN-@p.TxnId</span>
+                        </td>
+                        <td>
+                            <span class="order-ref">#SW-@p.OrderId</span>
+                        </td>
+                        <td>
+                            <div class="pay-cust-cell">
+                                <div class="pay-avatar">@p.CustomerName[0]</div>
+                                <span>@p.CustomerName</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="pay-method-cell">
+                                <span class="method-emoji">@GetMethodIcon(p.Method)</span>
+                                <span>@p.Method</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="pay-amount">Rs. @p.Amount.ToString("N0")</span>
+                        </td>
+                        <td>
+                            <span class="badge @GetStatusBadge(p.Status)">
+                                @p.Status
+                            </span>
+                        </td>
+                        <td>
+                            <span class="pay-date">@p.Date.ToString("dd MMM yyyy")</span>
+                            <span class="pay-time">@p.Date.ToString("hh:mm tt")</span>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-ghost btn-sm" title="View Receipt" aria-label="View receipt for transaction @p.TxnId"
+                                        @onclick="() => ViewReceipt(p)">
+                                    <i class="bi bi-receipt"></i>
+                                </button>
+                                @if (p.Status == "Pending")
+                                {
+                                    <button class="btn btn-primary btn-sm" title="Approve" aria-label="Approve payment for transaction @p.TxnId"
+                                            @onclick="() => ApprovePayment(p)">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                }
+                                @if (p.Status == "Completed")
+                                {
+                                    <button class="btn btn-ghost btn-sm" title="Refund" aria-label="Refund transaction @p.TxnId"
+                                            @onclick="() => selectedReceipt = p">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footer">
+        <span class="table-count">
+            @filteredPayments.Count() payments · Total: Rs. @filteredPayments.Sum(p => p.Amount).ToString("N0")
+        </span>
+    </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+@if (selectedReceipt != null)
+{
+    <div class="modal-overlay" @onclick="() => selectedReceipt = null">
+        <div class="receipt-modal" @onclick:stopPropagation="true">
+
+            <!-- RECEIPT HEADER -->
+            <div class="receipt-header">
+                <div class="receipt-logo">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7QnjcTUOpzRq05tWsyO5NYOmThuRS-5estg&s" alt="Logo" style="height: 32px; width: 32px; border-radius: 8px; object-fit: cover;" />
+                    <span>ShopWave</span>
+                </div>
+                <button class="receipt-close" @onclick="() => selectedReceipt = null" aria-label="Close receipt modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="receipt-status-banner @(selectedReceipt.Status == "Completed" ? "success" : selectedReceipt.Status == "Pending" ? "warning" : "danger")">
+                <i class="bi @(selectedReceipt.Status == "Completed" ? "bi-check-circle-fill" : selectedReceipt.Status == "Pending" ? "bi-clock-fill" : "bi-x-circle-fill")"></i>
+                Payment @selectedReceipt.Status
+            </div>
+
+            <div class="receipt-body">
+                <div class="receipt-row">
+                    <span>Transaction ID</span>
+                    <strong>#TXN-@selectedReceipt.TxnId</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Order ID</span>
+                    <strong>#SW-@selectedReceipt.OrderId</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Customer</span>
+                    <strong>@selectedReceipt.CustomerName</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Payment Method</span>
+                    <strong>@GetMethodIcon(selectedReceipt.Method) @selectedReceipt.Method</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Date & Time</span>
+                    <strong>@selectedReceipt.Date.ToString("dd MMM yyyy · hh:mm tt")</strong>
+                </div>
+                <div class="receipt-divider"></div>
+                <div class="receipt-row total-row">
+                    <span>Amount Paid</span>
+                    <strong class="receipt-total">Rs. @selectedReceipt.Amount.ToString("N0")</strong>
+                </div>
+            </div>
+
+            <div class="receipt-actions">
+                <button class="btn btn-outline btn-sm" aria-label="Print receipt">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+                <button class="btn btn-primary btn-sm" aria-label="Download receipt as PDF">
+                    <i class="bi bi-download"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private string searchQuery  = "";
+    private string filterStatus = "";
+    private string filterMethod = "";
+
+    private PaymentItem? selectedReceipt = null;
+
+    private class PaymentItem
+    {
+        public string   TxnId        { get; set; } = "";
+        public string   OrderId      { get; set; } = "";
+        public string   CustomerName { get; set; } = "";
+        public string   Method       { get; set; } = "";
+        public decimal  Amount       { get; set; }
+        public string   Status       { get; set; } = "";
+        public DateTime Date         { get; set; }
+    }
+
+    private List<PaymentItem> payments = new();
+
+    private decimal totalReceived => payments
+        .Where(p => p.Status == "Completed")
+        .Sum(p => p.Amount);
+
+    private IEnumerable<PaymentItem> filteredPayments => payments.Where(p =>
+        (string.IsNullOrEmpty(filterStatus) || p.Status == filterStatus) &&
+        (string.IsNullOrEmpty(filterMethod) || p.Method == filterMethod) &&
+        (string.IsNullOrEmpty(searchQuery)  ||
+         p.TxnId.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+         p.OrderId.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+         p.CustomerName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+         p.Amount.ToString().Contains(searchQuery)));
+
+    private record MethodStat(string Icon, string Label, int Count, int Pct);
+    private List<MethodStat> methodStats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(400); // simulate load
+
+        var names    = new[] { "Ali Hassan", "Sara Ahmed", "Usman Khan", "Fatima Malik", "Bilal Raza", "Ayesha Noor", "Hamza Sheikh", "Zara Qureshi" };
+        var methods  = new[] { "Card", "JazzCash", "EasyPaisa", "COD" };
+        var statuses = new[] { "Completed", "Completed", "Completed", "Pending", "Failed", "Refunded" };
+
+        for (int i = 1; i <= 20; i++)
+        {
+            payments.Add(new PaymentItem
+            {
+                TxnId        = (80000 + i).ToString(),
+                OrderId      = (47000 + i).ToString(),
+                CustomerName = names[i % names.Length],
+                Method       = methods[i % methods.Length],
+                Amount       = Random.Shared.Next(1500, 45000),
+                Status       = statuses[i % statuses.Length],
+                Date         = DateTime.Now.AddDays(-i).AddHours(-Random.Shared.Next(0, 12))
+            });
+        }
+
+        // Method breakdown stats
+        var total = payments.Count;
+        if (total > 0)
+        {
+            methodStats = new List<MethodStat>
+            {
+                new("💳", "Card",       payments.Count(p => p.Method == "Card"),       (int)((double)payments.Count(p => p.Method == "Card")       / total * 100)),
+                new("📱", "JazzCash",   payments.Count(p => p.Method == "JazzCash"),   (int)((double)payments.Count(p => p.Method == "JazzCash")   / total * 100)),
+                new("💚", "EasyPaisa",  payments.Count(p => p.Method == "EasyPaisa"),  (int)((double)payments.Count(p => p.Method == "EasyPaisa")  / total * 100)),
+                new("💵", "COD",        payments.Count(p => p.Method == "COD"),        (int)((double)payments.Count(p => p.Method == "COD")        / total * 100)),
+            };
+        }
+
+        isLoading = false;
+    }
+
+    private void ViewReceipt(PaymentItem p) => selectedReceipt = p;
+
+    private void ApprovePayment(PaymentItem p)
+    {
+        p.Status = "Completed";
+        StateHasChanged();
+    }
+
+    private void ExportCSV() { /* wire to JS download */ }
+
+    private string GetStatusBadge(string status) => status switch
+    {
+        "Completed" => "badge-success",
+        "Pending"   => "badge-warning",
+        "Failed"    => "badge-danger",
+        "Refunded"  => "badge-info",
+        _           => "badge-muted"
+    };
+
+    private string GetMethodIcon(string method) => method switch
+    {
+        "Card"      => "💳",
+        "JazzCash"  => "📱",
+        "EasyPaisa" => "💚",
+        "COD"       => "💵",
+        _           => "🏦"
+    };
+}
+
+<style>
+    /* ── STATS ROW ── */
+    .pay-stats-row {
+        display: grid; grid-template-columns: repeat(4,1fr);
+        gap: 16px; margin-bottom: 20px;
+    }
+    .pay-stat-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 18px 20px;
+        display: flex; align-items: center; gap: 14px;
+        transition: var(--t);
+    }
+    .pay-stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); }
+    .pstat-icon {
+        width: 46px; height: 46px; border-radius: var(--r-md);
+        display: grid; place-items: center; font-size: 1.2rem; flex-shrink: 0;
+    }
+    .pstat-icon.blue  { background:rgba(91,141,238,.12);  color:var(--primary); }
+    .pstat-icon.green { background:rgba(46,196,182,.12);  color:var(--success); }
+    .pstat-icon.gold  { background:rgba(244,162,97,.12);  color:var(--gold); }
+    .pstat-icon.pink  { background:rgba(240,98,146,.12);  color:var(--secondary); }
+    .pstat-info { flex: 1; min-width: 0; }
+    .pstat-val {
+        display: block; font-family: 'Syne', sans-serif;
+        font-size: 1.2rem; font-weight: 800; color: var(--text);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pstat-label { font-size: .72rem; color: var(--text-muted); }
+    .pstat-trend {
+        font-size: .72rem; font-weight: 700; flex-shrink: 0;
+        display: flex; align-items: center;
+    }
+    .pstat-trend.up      { color: var(--success); }
+    .pstat-trend.down    { color: var(--danger); }
+    .pstat-trend.neutral { color: var(--text-muted); }
+
+    /* ── METHOD BREAKDOWN ── */
+    .pay-method-row {
+        display: grid; grid-template-columns: repeat(4,1fr);
+        gap: 14px; margin-bottom: 20px;
+    }
+    .method-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 16px 18px;
+        display: flex; align-items: center; gap: 12px;
+        transition: var(--t);
+    }
+    .method-card:hover { border-color: var(--border-light); }
+    .method-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .method-info { flex: 1; min-width: 0; }
+    .method-info strong { display:block; font-size:.84rem; color: var(--text); font-weight:700; }
+    .method-info span   { font-size:.72rem; color:var(--text-muted); }
+    .method-bar-wrap { display:flex; align-items:center; gap:8px; }
+    .method-bar {
+        width: 60px; height: 4px; background: var(--border);
+        border-radius: 4px; overflow: hidden; flex-shrink: 0;
+    }
+    .method-bar-fill {
+        height: 100%; border-radius: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--purple));
+        transition: width .6s ease;
+    }
+    .method-pct { font-size:.72rem; font-weight:700; color:var(--text-2); white-space:nowrap; }
+
+    /* ── TOOLBAR ── */
+    .pay-toolbar {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .pay-search {
+        display: flex; align-items: center; gap: 10px;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--r-full); padding: 9px 18px;
+        flex: 1; min-width: 240px; transition: var(--t);
+    }
+    .pay-search:focus-within { border-color: var(--primary); }
+    .pay-search i { color: var(--text-muted); }
+    .pay-search input {
+        background: none; border: none; outline: none;
+        color: var(--text); font-family: 'Poppins', sans-serif; font-size: .85rem; flex: 1;
+    }
+    .pay-search input::placeholder { color: var(--text-muted); }
+    .pay-filters { display: flex; gap: 8px; }
+    .pay-filters select { min-width: 130px; }
+
+    /* ── TABLE ── */
+    .txn-id   { font-family:monospace; color:var(--primary); font-weight:700; font-size:.82rem; }
+    .order-ref { font-family:monospace; color:var(--text-2); font-size:.82rem; }
+    .pay-cust-cell { display:flex; align-items:center; gap:10px; }
+    .pay-avatar {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--purple));
+        display: grid; place-items: center;
+        font-weight: 800; font-size: .75rem; color: var(--text); flex-shrink: 0;
+    }
+    .pay-method-cell { display:flex; align-items:center; gap:8px; font-size:.84rem; }
+    .method-emoji { font-size: 1.1rem; }
+    .pay-amount { font-weight:800; color: var(--text); font-size:.9rem; }
+    .pay-date  { display:block; font-size:.8rem; color:var(--text-2); }
+    .pay-time  { display:block; font-size:.7rem; color:var(--text-muted); }
+    .action-btns { display:flex; gap:6px; align-items:center; }
+    .table-footer {
+        padding: 14px 20px; border-top: 1px solid var(--border);
+        font-size: .78rem; color: var(--text-muted);
+    }
+
+    /* ── RECEIPT MODAL ── */
+    .modal-overlay {
+        position: fixed; inset: 0; z-index: 1000;
+        background: rgba(7,8,15,.8); backdrop-filter: blur(6px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+    }
+    .receipt-modal {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); width: 100%; max-width: 420px;
+        overflow: hidden;
+        animation: receiptPop .28s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @@keyframes receiptPop {
+        from { transform: scale(.92) translateY(12px); opacity: 0; }
+        to   { transform: none; opacity: 1; }
+    }
+    .receipt-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 18px 22px; border-bottom: 1px solid var(--border);
+    }
+    .receipt-logo { display:flex; align-items:center; gap:10px; }
+    .rlogo-mark {
+        width: 32px; height: 32px; border-radius: 8px;
+        background: linear-gradient(135deg, #5b8dee, #7b2ff7);
+        display: grid; place-items: center;
+        font-family: 'Syne', sans-serif; font-weight: 800;
+        font-size: .8rem; color: var(--text);
+    }
+    .receipt-logo span { font-family:'Syne',sans-serif; font-weight:800; color: var(--text); }
+    .receipt-close {
+        background:none; border:none; color:var(--text-muted);
+        cursor:pointer; font-size:1rem; padding:4px;
+        transition: color .2s;
+    }
+    .receipt-close:hover { color: var(--text); }
+
+    .receipt-status-banner {
+        padding: 12px 22px; font-size:.85rem; font-weight:700;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .receipt-status-banner.success { background:rgba(86,207,130,.12); color:var(--success); }
+    .receipt-status-banner.warning { background:rgba(244,162,97,.12);  color:var(--gold); }
+    .receipt-status-banner.danger  { background:rgba(240,98,146,.12);  color:var(--danger); }
+
+    .receipt-body { padding: 20px 22px; }
+    .receipt-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 0; border-bottom: 1px solid var(--border);
+        font-size: .84rem;
+    }
+    .receipt-row span    { color: var(--text-muted); }
+    .receipt-row strong  { color: var(--text); font-weight: 700; }
+    .receipt-row:last-child { border-bottom: none; }
+    .receipt-divider { height: 1px; background: var(--border); margin: 8px 0; }
+    .total-row { padding-top: 14px !important; }
+    .receipt-total {
+        font-family: 'Syne', sans-serif !important;
+        font-size: 1.2rem !important; color: var(--primary) !important;
+    }
+    .receipt-actions {
+        padding: 16px 22px; border-top: 1px solid var(--border);
+        display: flex; gap: 10px; justify-content: flex-end;
+    }
+</style>
+

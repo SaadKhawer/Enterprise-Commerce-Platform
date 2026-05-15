@@ -1,0 +1,265 @@
+@page "/products"
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ShopWaveBlazor.Web.ECommerceAPI.Data.ECommerceDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ShopWaveBlazor.Web.Services.CartService CartService
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject IJSRuntime JS
+@using ShopWaveBlazor.Web.Services
+
+<PageTitle>ShopWave — Products</PageTitle>
+
+<!-- MAIN GRID: FILTER + PRODUCTS -->
+<div class="home-layout mt-4">
+
+    <!-- FILTER SIDEBAR -->
+    <aside class="filter-sidebar">
+        <div class="filter-title">
+            <i class="bi bi-sliders"></i> Filters
+        </div>
+
+        <div class="filter-section">
+            <span class="filter-section-label">Categories</span>
+            <div class="filter-option">
+                <input type="checkbox" id="cat-elec" checked="@selectedCategories.Contains("Electronics")" @onchange='(e) => ToggleCategory("Electronics", (bool)e.Value!)' />
+                <label for="cat-elec">Electronics (@GetCategoryCount("Electronics"))</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="cat-cloth" checked="@selectedCategories.Contains("Clothing")" @onchange='(e) => ToggleCategory("Clothing", (bool)e.Value!)' />
+                <label for="cat-cloth">Clothing (@GetCategoryCount("Clothing"))</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="cat-books" checked="@selectedCategories.Contains("Books")" @onchange='(e) => ToggleCategory("Books", (bool)e.Value!)' />
+                <label for="cat-books">Books (@GetCategoryCount("Books"))</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="cat-home" checked="@selectedCategories.Contains("Home & Living")" @onchange='(e) => ToggleCategory("Home & Living", (bool)e.Value!)' />
+                <label for="cat-home">Home & Living (@GetCategoryCount("Home & Living"))</label>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <span class="filter-section-label">Price Range (Rs.)</span>
+            <div class="price-range">
+                <div class="price-inputs">
+                    <input type="number" class="form-control form-control-sm" placeholder="Min" @bind="priceMin" @bind:event="oninput" />
+                    <span>—</span>
+                    <input type="number" class="form-control form-control-sm" placeholder="Max" @bind="priceMax" @bind:event="oninput" />
+                </div>
+                <input type="range" min="0" max="1000000" step="5000" @bind="priceMax" @bind:event="oninput" />
+                <div class="price-range-label">
+                    <span>Rs. 0</span>
+                    <span>Rs. 10,00,000</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-full mt-3" @onclick="StateHasChanged">
+            <i class="bi bi-funnel"></i> Apply Filters
+        </button>
+        <button class="clear-filters mt-2" @onclick="ClearFilters">
+            <i class="bi bi-x-circle"></i> Clear All
+        </button>
+    </aside>
+
+    <!-- PRODUCTS SECTION -->
+    <div class="products-section" id="products-start">
+        <div class="section-header" style="flex-wrap: wrap;">
+            <div>
+                <h3>All Products</h3>
+                <span class="product-count">@filteredProducts.Count() products found</span>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <button class="view-toggle active" title="Grid">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                </button>
+                <select class="form-control form-control-sm sort-select">
+                    <option>Newest First</option>
+                    <option>Price: Low to High</option>
+                    <option>Price: High to Low</option>
+                    <option>Top Rated</option>
+                </select>
+            </div>
+        </div>
+
+        @if(selectedCategories.Any() || (priceMax < 1000000) || (priceMin > 0)) {
+            <div class="active-filters-row mb-3 d-flex gap-2 flex-wrap">
+                @foreach(var cat in selectedCategories) {
+                    <span class="active-chip">@cat <i class="bi bi-x" @onclick="() => ToggleCategory(cat, false)"></i></span>
+                }
+                @if (priceMax < 1000000 || priceMin > 0) {
+                    <span class="active-chip">Rs. @(priceMin ?? 0) - Rs. @(priceMax ?? 1000000) <i class="bi bi-x" @onclick="() => { priceMin=0; priceMax=1000000; }"></i></span>
+                }
+                <button class="btn btn-sm btn-ghost p-0 px-2 m-0" style="color: #e63946; background: transparent;" @onclick="ClearFilters">Clear All</button>
+            </div>
+        }
+
+        @if (isLoading)
+        {
+            <!-- SKELETON LOADING -->
+            <div class="products-grid">
+                @for (int i = 0; i < 6; i++)
+                {
+                    <div class="product-card-v2">
+                        <div class="card-img-wrap-v2 skeleton" style="height: 220px;"></div>
+                        <div class="card-body-v2">
+                            <div class="skeleton-text w-40"></div>
+                            <div class="skeleton-text"></div>
+                            <div class="skeleton-text w-60"></div>
+                        </div>
+                        <div class="card-footer-v2">
+                            <div class="skeleton-text w-100" style="height: 44px; border-radius: 10px;"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (!filteredProducts.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-box-seam empty-icon" style="font-size:3rem; color: #a0a3bd; margin-bottom: 10px;"></i>
+                <h4>No products found</h4>
+                <p>Try adjusting your filters.</p>
+                <button class="btn btn-primary" style="margin: 0 auto;" @onclick="ClearFilters">
+                    <i class="bi bi-x-circle"></i> Clear Filters
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="products-grid">
+                @foreach (var p in filteredProducts)
+                {
+                    <ProductCard Product="p" OnAddToCartClick="AddToCart" />
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ShopWaveBlazor.Web.ECommerceAPI.Models.Product> products = new();
+    private bool isLoading = true;
+    private decimal? priceMin, priceMax = 1000000;
+    private HashSet<string> selectedCategories = new();
+    private string? searchQuery;
+
+    private IEnumerable<ShopWaveBlazor.Web.ECommerceAPI.Models.Product> filteredProducts => 
+        products.Where(p => 
+            (string.IsNullOrEmpty(searchQuery) || 
+             p.ProductName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+             (p.Description?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+            (!selectedCategories.Any() || (p.Category != null && selectedCategories.Any(c => string.Equals(c, p.Category.CategoryName, StringComparison.OrdinalIgnoreCase)))) &&
+            (p.Price >= (priceMin ?? 0) && p.Price <= (priceMax ?? 1000000))
+        );
+
+    private int GetCategoryCount(string categoryName) => 
+        products.Count(p => string.Equals(p.Category?.CategoryName, categoryName, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check for URL search query
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("q", out var q))
+        {
+            searchQuery = q.ToString();
+        }
+        else if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("category", out var cat))
+        {
+            selectedCategories.Add(cat.ToString());
+        }
+
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        using var Db = await DbFactory.CreateDbContextAsync();
+        products = await Db.Products.Include(p => p.Category).ToListAsync();
+        isLoading = false;
+    }
+
+    private void ToggleCategory(string category, bool isChecked)
+    {
+        if (isChecked) selectedCategories.Add(category);
+        else selectedCategories.Remove(category);
+    }
+
+    private void ClearFilters()
+    {
+        priceMin = 0;
+        priceMax = 1000000;
+        selectedCategories.Clear();
+        StateHasChanged();
+    }
+
+    private async Task AddToCart(ShopWaveBlazor.Web.ECommerceAPI.Models.Product p)
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await CartService.AddToCartAsync(AuthService.CurrentUser!.UserID, p.ProductID, 1);
+        await JS.InvokeVoidAsync("alert", $"{p.ProductName} has been added to your cart!");
+    }
+}
+
+<style>
+    /* ── HOME LAYOUT ── */
+    .home-layout { display: grid; grid-template-columns: 260px 1fr; gap: 30px; align-items: start; }
+
+    /* ── PRODUCTS SECTION ── */
+    .products-section { }
+    .product-count { font-size: .8rem; color: var(--text-muted); margin-top: 5px; display: block; font-weight: 500; }
+    .sort-select { width: 160px !important; background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+    .view-toggle { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: var(--t); display: grid; place-items: center; }
+    .view-toggle.active { background: var(--primary); border-color: var(--primary); color: var(--text); }
+
+    /* ── FILTER SIDEBAR ── */
+    .filter-sidebar { background: var(--surface); border: 1px solid rgba(0,0,0,0.06); border-radius: 16px; padding: 25px; position: sticky; top: 100px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .filter-title { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 25px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 15px; }
+    .filter-section { margin-bottom: 25px; }
+    .filter-section-label { display: block; font-size: 0.8rem; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 15px; }
+    
+    .filter-option { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer; }
+    .filter-option input[type="checkbox"] { appearance: none; width: 20px; height: 20px; border: 2px solid rgba(0,0,0,0.2); border-radius: 6px; background: rgba(0,0,0,0.2); cursor: pointer; transition: all 0.2s; position: relative; }
+    .filter-option input[type="checkbox"]:checked { background: var(--primary); border-color: var(--primary); }
+    .filter-option input[type="checkbox"]:checked::after { content: '✓'; position: absolute; color: var(--text); font-size: 0.8rem; font-weight: bold; left: 3px; top: -1px; }
+    .filter-option label { color: #4B5563; font-size: 0.95rem; cursor: pointer; transition: color 0.2s; font-weight: 500; }
+    .filter-option:hover label { color: var(--text); }
+
+    .price-range { display: flex; flex-direction: column; gap: 15px; }
+    .price-inputs { display: flex; align-items: center; gap: 10px; }
+    .price-inputs input { background: rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; color: var(--text); padding: 8px 12px; width: 100%; text-align: center; font-size: 0.9rem; transition: all 0.3s; outline: none; }
+    .price-inputs input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(91,141,238,0.15); }
+    .price-inputs span { color: #6c7293; font-weight: bold; }
+    
+    .price-range input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; height: 4px; border-radius: 2px; }
+    .price-range-label { display: flex; justify-content: space-between; color: #a0a3bd; font-size: 0.85rem; font-weight: 600; }
+
+    .btn-full { width: 100%; border-radius: 10px; padding: 12px; font-weight: 600; font-size: 0.95rem; background: #111018; border: none; display: flex; justify-content: center; align-items: center; gap: 8px; transition: transform 0.3s, box-shadow 0.3s; color: #FFFFFF !important; }
+    .btn-full:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
+    
+    .clear-filters { width: 100%; background: transparent; border: 1px solid rgba(230,57,70,0.3); color: #e63946; padding: 10px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; margin-top: 10px; }
+    .clear-filters:hover { background: rgba(230,57,70,0.1); border-color: #e63946; }
+
+    /* ── ACTIVE CHIPS & EMPTY STATE ── */
+    .active-chip { background: rgba(91,141,238,0.15); color: #5b8dee; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; border: 1px solid rgba(91,141,238,0.3); animation: fadeIn 0.3s ease; }
+    .active-chip i { cursor: pointer; font-size: 1rem; }
+    .active-chip i:hover { color: var(--text); }
+    .empty-state { text-align: center; padding: 60px 20px; background: rgba(0,0,0,0.2); border-radius: 20px; border: 1px dashed rgba(0,0,0,0.1); animation: fadeIn 0.4s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .empty-state h4 { color: var(--text); font-weight: 700; margin-bottom: 8px; }
+    .empty-state p { color: #8a8d9e; margin-bottom: 20px; }
+    
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 768px) {
+        .home-layout { grid-template-columns: 1fr; }
+        .filter-sidebar { margin-bottom: 24px; position: static; }
+    }
+</style>
+

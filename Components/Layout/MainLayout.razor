@@ -1,0 +1,415 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+@inject ProtectedLocalStorage LocalStorage
+@inject ShopWaveBlazor.Web.Services.OrderService OrderService
+@inject ShopWaveBlazor.Web.Services.CartService CartService
+
+<!-- GRADIENT PROGRESS BAR -->
+<div class="top-gradient-bar"></div>
+
+<div class="app-layout">
+    @if (isInitializing)
+    {
+        <div class="initial-loader">
+            <div class="loader-brand">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7QnjcTUOpzRq05tWsyO5NYOmThuRS-5estg&s" alt="Logo" style="height: 46px; width: 46px; border-radius: 12px; object-fit: cover; box-shadow: 0 0 30px rgba(79,142,247,.5);" />
+                <span>ShopWave</span>
+            </div>
+            <div class="spinner-xl"></div>
+            <p class="loader-text">Initializing Command Center...</p>
+        </div>
+    }
+    else if (AuthService.IsAuthenticated)
+    {
+        <!-- SIDEBAR -->
+        <aside class="sidebar @(mobileMenuOpen ? "open" : "")">
+            <div class="sidebar-mobile-close" @onclick="() => mobileMenuOpen = false">
+                <i class="bi bi-x-lg"></i>
+            </div>
+
+            <!-- Ambient glow orbs -->
+            <div class="sb-orb sb-orb1"></div>
+            <div class="sb-orb sb-orb2"></div>
+
+            <!-- Logo -->
+            <div class="sidebar-logo">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7QnjcTUOpzRq05tWsyO5NYOmThuRS-5estg&s" alt="Logo" style="height: 32px; width: 32px; border-radius: 8px; object-fit: cover;" />
+                <div class="logo-text">Shop<span>Wave</span></div>
+            </div>
+
+            <!-- Main Menu -->
+            <div class="sidebar-section-label">Main Menu</div>
+            <nav class="sidebar-nav">
+                <a class="nav-item @(IsActive("") ? "active" : "")" href="" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-house nav-icon"></i>
+                    <span>Home</span>
+                    <span class="nav-shortcut">G H</span>
+                </a>
+                <a class="nav-item @(IsActive("products") ? "active" : "")" href="products" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-grid-3x3-gap nav-icon"></i>
+                    <span>Products</span>
+                    <span class="nav-shortcut">G P</span>
+                </a>
+                <a class="nav-item @(IsActive("cart") ? "active" : "")" href="cart" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-cart3 nav-icon"></i>
+                    <span>My Cart</span>
+                    <span class="nav-shortcut">G C</span>
+                </a>
+                <a class="nav-item @(IsActive("orders") ? "active" : "")" href="orders" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-bag-check nav-icon"></i>
+                    <span>My Orders</span>
+                    @if (orderCount > 0)
+                    {
+                        <span class="nav-badge">@orderCount</span>
+                    }
+                </a>
+                <a class="nav-item @(IsActive("checkout") ? "active" : "")" href="checkout" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-credit-card nav-icon"></i>
+                    <span>Checkout</span>
+                    <span class="nav-shortcut">G X</span>
+                </a>
+                <a class="nav-item @(IsActive("reviews") ? "active" : "")" href="reviews" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-star nav-icon"></i>
+                    <span>Reviews</span>
+                    <span class="nav-shortcut">G R</span>
+                </a>
+                <a class="nav-item @(IsActive("settings") ? "active" : "")" href="settings" @onclick="() => mobileMenuOpen = false">
+                    <i class="bi bi-gear nav-icon"></i>
+                    <span>Settings</span>
+                    <span class="nav-shortcut">G S</span>
+                </a>
+            </nav>
+
+            @if (AuthService.IsAdmin)
+            {
+                <div class="sidebar-section-label">Administration</div>
+                <nav class="sidebar-nav">
+                    <a class="nav-item @(IsActive("dashboard") ? "active" : "")" href="dashboard" @onclick="() => mobileMenuOpen = false">
+                        <i class="bi bi-speedometer2 nav-icon"></i>
+                        <span>Dashboard</span>
+                        <span class="nav-shortcut">G D</span>
+                    </a>
+                    <a class="nav-item @(IsActive("reports") ? "active" : "")" href="reports" @onclick="() => mobileMenuOpen = false">
+                        <i class="bi bi-graph-up nav-icon"></i>
+                        <span>Reports</span>
+                        <span class="nav-shortcut">G A</span>
+                    </a>
+                </nav>
+            }
+
+            <!-- Sidebar Footer / User -->
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="avatar">@(AuthService.CurrentUser?.FullName?[0])</div>
+                    <div class="user-info">
+                        <strong>@AuthService.CurrentUser?.FullName</strong>
+                        <span class="role-badge">@AuthService.CurrentUser?.UserType</span>
+                    </div>
+                    <button class="logout-btn" title="Logout" @onclick="HandleLogout">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        @if (mobileMenuOpen)
+        {
+            <div class="sidebar-overlay" @onclick="() => mobileMenuOpen = false"></div>
+        }
+
+        <!-- MAIN AREA -->
+        <div class="app-main">
+
+            <!-- HEADER (Floating Pill) -->
+            <header class="header header-pill">
+                <div class="header-left" style="display:flex; align-items:center; gap:8px;">
+                    <button class="mobile-toggle" @onclick="() => mobileMenuOpen = true">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <!-- Brand -->
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18.5 4.5v15l-13-15v15" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span style="font-family: var(--font-display); font-weight:800; font-size:1.4rem; color:var(--text); letter-spacing:-0.5px;">nitec.</span>
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <div class="search-pill">
+                    <input type="text" placeholder="Search products..."
+                           @bind="globalSearchQuery"
+                           @onkeyup="HandleSearchKey" />
+                    <button class="search-btn"><i class="bi bi-search"></i></button>
+                </div>
+
+                <!-- Actions -->
+                <div class="header-actions">
+                    <button class="icon-btn" title="Cart" @onclick='() => Navigation.NavigateTo("/cart")'>
+                        <i class="bi bi-bag"></i>
+                        @if (cartCount > 0)
+                        {
+                            <span class="badge">@cartCount</span>
+                        }
+                    </button>
+                    <button class="icon-btn" title="Wishlist">
+                        <i class="bi bi-suit-heart-fill" style="color: var(--danger);"></i>
+                    </button>
+                    <div class="user-profile-pill">
+                        <span class="user-name">@AuthService.CurrentUser?.FullName</span>
+                        <div class="user-avatar">
+                            @(AuthService.CurrentUser?.FullName?[0] ?? 'R')
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- PAGE BODY -->
+            <main class="main-content" style="display: flex; flex-direction: column; min-height: calc(100vh - 70px);">
+                <div class="content-wrapper" style="flex: 1;">
+                    @Body
+                </div>
+                <Footer />
+            </main>
+
+            <!-- MOBILE BOTTOM NAV -->
+            <nav class="mobile-bottom-nav">
+                <a class="mob-nav-link @(IsActive("") ? "active" : "")" href="">
+                    <i class="bi bi-house"></i>
+                    <span>Home</span>
+                </a>
+                <a class="mob-nav-link @(IsActive("products") ? "active" : "")" href="products">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                    <span>Products</span>
+                </a>
+                <a class="mob-nav-link @(IsActive("cart") ? "active" : "")" href="cart">
+                    <i class="bi bi-cart3"></i>
+                    <span>Cart</span>
+                </a>
+                <a class="mob-nav-link @(IsActive("orders") ? "active" : "")" href="orders">
+                    <i class="bi bi-bag-check"></i>
+                    <span>Orders</span>
+                </a>
+                <button class="mob-nav-link" @onclick="() => mobileMenuOpen = true">
+                    <i class="bi bi-grid"></i>
+                    <span>Menu</span>
+                </button>
+            </nav>
+        </div>
+    }
+    else
+    {
+        @Body
+    }
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmd-palette-overlay" id="command-palette">
+    <div class="cmd-palette">
+        <div class="cmd-input-wrap">
+            <i class="bi bi-search"></i>
+            <input class="cmd-input" placeholder="Search orders, products, customers..." />
+            <span class="cmd-kbd">ESC</span>
+        </div>
+        <div class="cmd-results">
+            <div class="cmd-result-item" @onclick='() => Navigation.NavigateTo("/dashboard")'>
+                <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
+            </div>
+            <div class="cmd-result-item" @onclick='() => Navigation.NavigateTo("/products")'>
+                <i class="bi bi-grid-3x3-gap"></i> <span>Products</span>
+            </div>
+            <div class="cmd-result-item" @onclick='() => Navigation.NavigateTo("/orders")'>
+                <i class="bi bi-bag-check"></i> <span>My Orders</span>
+            </div>
+            <div class="cmd-result-item" @onclick='() => Navigation.NavigateTo("/reports")'>
+                <i class="bi bi-graph-up"></i> <span>Reports & Analytics</span>
+            </div>
+            <div class="cmd-result-item" @onclick='() => Navigation.NavigateTo("/settings")'>
+                <i class="bi bi-gear"></i> <span>Settings</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isInitializing = true;
+    private bool mobileMenuOpen = false;
+
+    private int orderCount = 0;
+    private int cartCount = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                try
+                {
+                    var result = await LocalStorage.GetAsync<int>("userId");
+                    if (result.Success)
+                        await AuthService.LoadUserAsync(result.Value);
+                }
+                catch { }
+
+                if (AuthService.IsAuthenticated)
+                {
+                    await RefreshStats();
+                }
+
+                var uri = Navigation.Uri.Replace(Navigation.BaseUri, "").Split('?')[0].ToLower();
+                if (!AuthService.IsAuthenticated && uri != "login" && uri != "register")
+                    Navigation.NavigateTo("/login");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Initialization error: {ex.Message}");
+            }
+            finally
+            {
+                isInitializing = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task RefreshStats()
+    {
+        try
+        {
+            if (AuthService.CurrentUser != null)
+            {
+                var orders = await OrderService.GetUserOrdersAsync(AuthService.CurrentUser.UserID);
+                orderCount = orders.Count;
+
+                var cart = await CartService.GetCartItemsAsync(AuthService.CurrentUser.UserID);
+                cartCount = cart.Count;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Stats refresh error: {ex.Message}");
+        }
+    }
+
+    private string PageTitle => Navigation.Uri.Replace(Navigation.BaseUri, "").Split('?')[0] switch
+    {
+        ""           => "🏠 Home",
+        "dashboard"  => "📊 Admin Dashboard",
+        "cart"       => "🛒 Shopping Cart",
+        "orders"     => "📦 My Orders",
+        "checkout"   => "💳 Checkout",
+        _            => "ShopWave"
+    };
+
+    private bool IsActive(string path) =>
+        Navigation.Uri.Replace(Navigation.BaseUri, "").Split('?')[0].ToLower() == path;
+
+    private string globalSearchQuery = "";
+    private void HandleSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(globalSearchQuery))
+        {
+            Navigation.NavigateTo($"/?q={Uri.EscapeDataString(globalSearchQuery)}");
+            globalSearchQuery = ""; // Clear after search
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        AuthService.Logout();
+        await LocalStorage.DeleteAsync("userId");
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}
+
+<style>
+    /* ── SIDEBAR AMBIENT ORBS ── */
+    .sb-orb {
+        position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 0;
+    }
+    .sb-orb1 { width: 180px; height: 180px; background: radial-gradient(circle, rgba(79,142,247,.10), transparent); top: 60px; left: -60px; }
+    .sb-orb2 { width: 140px; height: 140px; background: radial-gradient(circle, rgba(0,212,170,.06), transparent); bottom: 120px; right: -40px; }
+
+    /* ── LOADER ── */
+    .initial-loader {
+        position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 20px; z-index: 9999;
+    }
+    .loader-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .loader-mark {
+        width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, #4F8EF7, #7B61FF);
+        display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--text); box-shadow: 0 0 30px rgba(79,142,247,.5);
+    }
+    .loader-brand span { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--text); }
+    .loader-text { font-size: .82rem; color: #6B7A99; letter-spacing: .5px; font-family: var(--font-body); }
+    .spinner-xl { width: 48px; height: 48px; border: 3px solid rgba(0,0,0,0.06); border-top-color: #4F8EF7; border-radius: 50%; animation: spin 1s linear infinite; }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .mobile-toggle {
+        display: none; background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer;
+    }
+
+    .sidebar-mobile-close {
+        display: none; position: absolute; top: 20px; right: 20px; font-size: 1.5rem; color: var(--text); cursor: pointer; z-index: 10;
+    }
+
+    .sidebar-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 150;
+    }
+
+    .mobile-bottom-nav {
+        display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+        background: var(--bg); border-top: 1px solid rgba(0,0,0,0.06); z-index: 100;
+        justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom);
+    }
+    .mob-nav-link {
+        display: flex; flex-direction: column; align-items: center; gap: 4px; color: #6B7A99; text-decoration: none; font-size: 0.65rem; background: none; border: none;
+    }
+    .mob-nav-link i { font-size: 1.2rem; }
+    .mob-nav-link.active { color: #4F8EF7; }
+
+    @@media (max-width: 768px) {
+        .mobile-toggle { display: block; }
+        .sidebar-mobile-close { display: block; }
+        .mobile-bottom-nav { display: flex; }
+        .main-content { padding: 15px; padding-bottom: 80px; }
+        .header { padding: 0 15px; }
+        .sidebar { position: fixed; top: 0; bottom: 0; left: 0; height: 100vh; }
+    }
+
+    /* ── PROMINENT BELL ── */
+    .bell-prominent {
+        color: #4F8EF7 !important;
+        animation: swing 3s infinite ease-in-out;
+        background: rgba(79,142,247,0.10) !important;
+        border: 1px solid rgba(79,142,247,0.2) !important;
+    }
+    .bell-prominent:hover {
+        background: rgba(79,142,247,0.20) !important;
+        transform: scale(1.1);
+    }
+    .pulse-badge {
+        animation: pulse-ring 2s infinite;
+    }
+    @@keyframes swing {
+        0%, 100% { transform: rotate(0deg); }
+        20% { transform: rotate(15deg); }
+        40% { transform: rotate(-10deg); }
+        60% { transform: rotate(5deg); }
+        80% { transform: rotate(-5deg); }
+    }
+    @@keyframes pulse-ring {
+        0% { box-shadow: 0 0 0 0 rgba(255,77,109, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(255,77,109, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255,77,109, 0); }
+    }
+
+    /* ── USER AVATAR MINI ── */
+    .user-avatar-mini {
+        width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #4F8EF7, #7B61FF);
+        display: grid; place-items: center; color: var(--text); font-weight: 800; font-size: .9rem; border: 2px solid rgba(0,0,0,0.06); cursor: pointer; transition: all .2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .user-avatar-mini:hover { border-color: #4F8EF7; box-shadow: 0 0 0 3px rgba(79,142,247,.25); }
+</style>
+

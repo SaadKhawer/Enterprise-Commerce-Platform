@@ -1,0 +1,74 @@
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="p-4 mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7QnjcTUOpzRq05tWsyO5NYOmThuRS-5estg&s" alt="Logo" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;" />
+        <h3 class="mb-0 fw-bold text-gradient">ShopWave</h3>
+    </div>
+</div>
+
+<nav class="flex-column px-3">
+    <NavLink class="nav-link-custom mb-2" href="" Match="NavLinkMatch.All">
+        <i class="bi bi-house-door"></i> Home
+    </NavLink>
+    
+    <NavLink class="nav-link-custom mb-2" href="products">
+        <i class="bi bi-grid-3x3-gap"></i> Products
+    </NavLink>
+
+    @if (AuthService.IsAuthenticated)
+    {
+        <NavLink class="nav-link-custom mb-2" href="cart">
+            <i class="bi bi-cart3"></i> My Cart
+        </NavLink>
+        
+        <NavLink class="nav-link-custom mb-2" href="orders">
+            <i class="bi bi-bag-check"></i> My Orders
+        </NavLink>
+
+        <NavLink class="nav-link-custom mb-2" href="reviews">
+            <i class="bi bi-star"></i> Reviews
+        </NavLink>
+
+        <NavLink class="nav-link-custom mb-2" href="notifications">
+            <i class="bi bi-bell"></i> Notifications
+        </NavLink>
+
+        <NavLink class="nav-link-custom mb-2" href="settings">
+            <i class="bi bi-gear"></i> Settings
+        </NavLink>
+
+        @if (AuthService.IsAdmin)
+        {
+            <hr class="border-white-10 my-3" />
+            <div class="small text-muted px-3 mb-2 uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Admin Panel</div>
+            <NavLink class="nav-link-custom mb-2" href="dashboard">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </NavLink>
+            <NavLink class="nav-link-custom mb-2" href="reports">
+                <i class="bi bi-graph-up"></i> Reports
+            </NavLink>
+        }
+
+        <hr class="border-white-10 my-3" />
+        <button class="nav-link-custom mb-2 w-100 border-0 bg-transparent text-danger" @onclick="HandleLogout">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+    }
+    else
+    {
+        <hr class="border-white-10 my-3" />
+        <NavLink class="nav-link-custom mb-2 bg-primary bg-opacity-10 text-primary" href="login">
+            <i class="bi bi-person"></i> Login / Register
+        </NavLink>
+    }
+</nav>
+
+@code {
+    private void HandleLogout()
+    {
+        AuthService.Logout();
+        Navigation.NavigateTo("/login");
+    }
+}

@@ -1,0 +1,458 @@
+@page "/cart"
+@using Microsoft.EntityFrameworkCore
+@using ShopWaveBlazor.Web.ECommerceAPI.Models
+@using ShopWaveBlazor.Web.ECommerceAPI.Data
+@using ShopWaveBlazor.Web.Services
+@inject ShopWaveBlazor.Web.Services.CartService CartService
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<ECommerceDbContext> DbFactory
+
+<PageTitle>ShopWave — My Cart</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Shopping Cart</h2>
+        <div class="breadcrumb">Home <i class="bi bi-chevron-right"></i> <span>Cart</span></div>
+    </div>
+    @if (cartItems.Any())
+    {
+        <button class="btn btn-danger btn-sm" @onclick="ClearCart" aria-label="Clear all cart items">
+            <i class="bi bi-trash"></i> Clear Cart
+        </button>
+    }
+</div>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="empty-state card">
+        <div class="empty-cart-icon">
+            <i class="bi bi-person-lock"></i>
+            <div class="empty-cart-glow"></div>
+        </div>
+        <h4>Please Login</h4>
+        <p>You need to be logged in to view your shopping cart.</p>
+        <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/login")'>
+            <i class="bi bi-box-arrow-in-right"></i> Login Now
+        </button>
+    </div>
+}
+else if (!cartItems.Any())
+{
+    <!-- EMPTY STATE -->
+    <div class="empty-state card">
+        <div class="empty-cart-icon">
+            <i class="bi bi-cart-x"></i>
+            <div class="empty-cart-glow"></div>
+        </div>
+        <h4>Your cart is empty</h4>
+        <p>Lagta hai abhi tak kuch add nahi kiya. Chalo shopping karte hain!</p>
+        <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/")'>
+            <i class="bi bi-bag-heart"></i> Start Shopping
+        </button>
+    </div>
+}
+else
+{
+    <div class="cart-layout">
+
+        <!-- LEFT: CART ITEMS -->
+        <div class="cart-items-col">
+
+            <!-- ITEMS COUNT HEADER -->
+            <div class="cart-items-header">
+                <span class="items-count">
+                    <i class="bi bi-cart3"></i>
+                    @cartItems.Count item@(cartItems.Count > 1 ? "s" : "") in your cart
+                </span>
+                <button class="btn btn-ghost btn-sm" @onclick="ClearCart" aria-label="Remove all items">
+                    <i class="bi bi-trash3"></i> Remove all
+                </button>
+            </div>
+
+            <div class="cart-items-list" style="border-radius: var(--r-xl); overflow: hidden; border: 1px solid rgba(0,0,0,0.05);">
+                <div class="card-body" style="padding:0;">
+                    @foreach (var item in cartItems)
+                    {
+                        <div class="cart-item">
+                            <!-- IMAGE -->
+                            <div class="cart-item-img-wrap">
+                                <img src="@ProductImageService.GetImage(item.Product?.ProductName, item.Product?.Category?.CategoryName)"
+                                     class="cart-item-img"
+                                     alt="@item.Product?.ProductName"
+                                     onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=200&q=80'" />
+                            </div>
+
+                            <!-- DETAILS -->
+                            <div class="cart-item-details">
+                                <span class="cart-item-cat">@item.Product?.Category?.CategoryName</span>
+                                <h5 class="cart-item-name">@item.Product?.ProductName</h5>
+                                <div class="cart-item-meta">
+                                    <span class="badge badge-success">In Stock</span>
+                                    <span class="cart-item-sku">SKU: SW-@item.Product?.ProductID</span>
+                                </div>
+                                <div class="cart-item-price-mobile">
+                                    Rs. @item.Product?.Price.ToString("N0")
+                                </div>
+                            </div>
+
+                            <!-- UNIT PRICE -->
+                            <div class="cart-item-unit-price">
+                                <span class="unit-label">Unit Price</span>
+                                <span class="unit-val">Rs. @item.Product?.Price.ToString("N0")</span>
+                            </div>
+
+                            <!-- QTY CONTROL -->
+                            <div class="cart-qty-wrap">
+                                <span class="unit-label">Quantity</span>
+                                <div class="qty-control">
+                                    <button class="qty-btn" @onclick="() => UpdateQty(item, -1)" disabled="@(item.Quantity <= 1)" aria-label="Decrease quantity">−</button>
+                                    <span class="qty-display">@item.Quantity</span>
+                                    <button class="qty-btn" @onclick="() => UpdateQty(item, 1)" aria-label="Increase quantity">+</button>
+                                </div>
+                            </div>
+
+                            <!-- SUBTOTAL -->
+                            <div class="cart-item-subtotal">
+                                <span class="unit-label">Subtotal</span>
+                                <span class="subtotal-val">
+                                    Rs. @((item.Product?.Price * item.Quantity)?.ToString("N0"))
+                                </span>
+                            </div>
+
+                            <!-- REMOVE -->
+                            <button class="remove-btn" title="Remove item" aria-label="Remove item" @onclick="() => RemoveItem(item)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- PROMO CODE -->
+            <div class="promo-box">
+                <div class="promo-icon"><i class="bi bi-ticket-perforated"></i></div>
+                <div class="promo-content">
+                    <strong>Have a promo code?</strong>
+                    <span>Enter your code to get a discount</span>
+                </div>
+                <div class="promo-input-wrap">
+                    <label class="form-label d-none" for="promo-input">Promo Code</label>
+                    <input id="promo-input" type="text" class="form-control form-control-sm"
+                           placeholder="e.g. SAVE20" @bind="promoCode" @bind:event="oninput" />
+                    <button class="btn btn-primary btn-sm" @onclick="ApplyPromo">Apply</button>
+                </div>
+            </div>
+
+            @if (promoApplied)
+            {
+                <div class="promo-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    Promo code <strong>@promoCode</strong> applied! You saved Rs. @promoDiscount.ToString("N0")
+                </div>
+            }
+            @if (promoError)
+            {
+                <div class="promo-error">
+                    <i class="bi bi-x-circle-fill"></i>
+                    Invalid promo code. Try <strong>SAVE10</strong> or <strong>SHOPWAVE20</strong>
+                </div>
+            }
+
+            <!-- CONTINUE SHOPPING -->
+            <div class="continue-strip">
+                <button class="btn btn-ghost btn-sm" @onclick='() => Navigation.NavigateTo("/")'>
+                    <i class="bi bi-arrow-left"></i> Continue Shopping
+                </button>
+            </div>
+        </div>
+
+        <!-- RIGHT: ORDER SUMMARY -->
+        <aside class="cart-summary">
+            <h4 class="summary-title">
+                <i class="bi bi-receipt"></i> Order Summary
+            </h4>
+
+            <!-- PRICE BREAKDOWN -->
+            <div class="summary-rows">
+                <div class="summary-row">
+                    <span>Subtotal (@cartItems.Count items)</span>
+                    <span>Rs. @subtotal.ToString("N0")</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <span class="text-success fw-bold">@(shipping == 0 ? "FREE" : "Rs. " + shipping.ToString("N0"))</span>
+                </div>
+                <div class="summary-row">
+                    <span>GST (5%)</span>
+                    <span>Rs. @gst.ToString("N0")</span>
+                </div>
+                @if (promoApplied)
+                {
+                    <div class="summary-row discount-row">
+                        <span><i class="bi bi-tag"></i> Promo (@promoCode)</span>
+                        <span class="text-success">− Rs. @promoDiscount.ToString("N0")</span>
+                    </div>
+                }
+            </div>
+
+            <div class="summary-total-row">
+                <span>Total</span>
+                <span class="total-val">Rs. @total.ToString("N0")</span>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <!-- DELIVERY OPTIONS -->
+            <div class="delivery-title">
+                <i class="bi bi-truck"></i> Delivery Option
+            </div>
+            <div class="delivery-options">
+                <div class="delivery-opt @(selectedDelivery == "standard" ? "selected" : "")"
+                     @onclick='() => selectedDelivery = "standard"'>
+                    <input type="radio" id="del-standard" name="delivery" checked="@(selectedDelivery == "standard")" />
+                    <label class="opt-info" for="del-standard">
+                        <strong>Standard Delivery</strong>
+                        <span>5-7 Business Days</span>
+                    </label>
+                    <div class="opt-price text-success">Free</div>
+                </div>
+                <div class="delivery-opt @(selectedDelivery == "express" ? "selected" : "")"
+                     @onclick='() => selectedDelivery = "express"'>
+                    <input type="radio" id="del-express" name="delivery" checked="@(selectedDelivery == "express")" />
+                    <label class="opt-info" for="del-express">
+                        <strong>Express Delivery</strong>
+                        <span>2-3 Business Days</span>
+                    </label>
+                    <div class="opt-price">Rs. 250</div>
+                </div>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <!-- PAYMENT ICONS -->
+            <div class="payment-strip">
+                <span class="pay-label">Secure Payments</span>
+                <div class="pay-icons">
+                    <div class="pay-icon" title="Credit Card"><i class="bi bi-credit-card"></i></div>
+                    <div class="pay-icon" title="PayPal"><i class="bi bi-paypal"></i></div>
+                    <div class="pay-icon" title="Mobile Wallet"><i class="bi bi-phone"></i></div>
+                    <div class="pay-icon" title="Cash on Delivery"><i class="bi bi-cash"></i></div>
+                </div>
+            </div>
+
+            <!-- CHECKOUT BUTTON -->
+            <button class="btn btn-primary btn-full btn-lg checkout-btn"
+                    @onclick='() => Navigation.NavigateTo("/checkout")'>
+                Proceed to Checkout
+                <i class="bi bi-arrow-right"></i>
+            </button>
+
+            <!-- SECURITY NOTE -->
+            <div class="security-note">
+                <i class="bi bi-shield-lock"></i>
+                SSL Encrypted · 100% Secure Checkout
+            </div>
+        </aside>
+    </div>
+}
+
+@code {
+    private List<ShopWaveBlazor.Web.ECommerceAPI.Models.Cart> cartItems = new();
+    private string selectedDelivery = "standard";
+    private string promoCode = "";
+    private bool promoApplied = false;
+    private bool promoError   = false;
+    private decimal promoDiscount = 0;
+
+    private decimal subtotal => cartItems.Sum(i => (i.Product?.Price ?? 0) * i.Quantity);
+    private decimal gst      => subtotal * 0.05m;
+    private decimal shipping => selectedDelivery == "express" ? 250 : 0;
+    private decimal total    => subtotal + gst + shipping - promoDiscount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadCart();
+        }
+    }
+
+    private async Task LoadCart()
+    {
+        if (AuthService.CurrentUser != null)
+        {
+            // Wrapping in IDbContextFactory as requested for Rule 6
+            using var Db = await DbFactory.CreateDbContextAsync();
+            cartItems = await CartService.GetCartItemsAsync(AuthService.CurrentUser.UserID);
+        }
+    }
+
+    private async Task UpdateQty(ShopWaveBlazor.Web.ECommerceAPI.Models.Cart item, int delta)
+    {
+        var next = item.Quantity + delta;
+        if (next >= 1)
+        {
+            item.Quantity = next;
+            await CartService.UpdateQuantityAsync(item.CartID, next);
+        }
+    }
+
+    private async Task RemoveItem(ShopWaveBlazor.Web.ECommerceAPI.Models.Cart item)
+    {
+        await CartService.RemoveFromCartAsync(item.CartID);
+        cartItems.Remove(item);
+    }
+
+    private async Task ClearCart()
+    {
+        if (AuthService.CurrentUser != null)
+        {
+            await CartService.ClearCartAsync(AuthService.CurrentUser.UserID);
+            cartItems.Clear();
+        }
+    }
+
+    private void ApplyPromo()
+    {
+        promoApplied = false;
+        promoError   = false;
+        promoDiscount = 0;
+
+        var code = promoCode.Trim().ToUpper();
+        if (code == "SAVE10")
+        {
+            promoDiscount = subtotal * 0.10m;
+            promoApplied  = true;
+        }
+        else if (code == "SHOPWAVE20")
+        {
+            promoDiscount = subtotal * 0.20m;
+            promoApplied  = true;
+        }
+        else
+        {
+            promoError = true;
+        }
+    }
+}
+
+<style>
+    /* ── EMPTY STATE ── */
+    .empty-cart-icon { position: relative; font-size: 5rem; color: var(--text-muted); margin-bottom: 8px; display: grid; place-items: center; }
+    .empty-cart-glow { position: absolute; width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle, rgba(91,141,238,.15), transparent); filter: blur(16px); }
+
+    /* ── CART LAYOUT ── */
+    .cart-layout { display: grid; grid-template-columns: 1fr 380px; gap: 30px; align-items: start; }
+
+    /* ── ITEMS HEADER ── */
+    .cart-items-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .items-count { font-size: 1rem; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    .items-count i { color: var(--primary); }
+
+    /* ── CART ITEM ── */
+    .cart-item { display: flex; align-items: center; gap: 20px; padding: 24px; border-bottom: 1px solid rgba(0,0,0,0.05); transition: var(--t); background: var(--surface); }
+    .cart-item:first-child { border-top-left-radius: var(--r-xl); border-top-right-radius: var(--r-xl); }
+    .cart-item:last-child { border-bottom: none; border-bottom-left-radius: var(--r-xl); border-bottom-right-radius: var(--r-xl); }
+    .cart-item:hover { background: rgba(91,141,238,.03); }
+
+    .cart-item-img-wrap { width: 100px; height: 100px; flex-shrink: 0; border-radius: var(--r-md); overflow: hidden; border: 1px solid rgba(0,0,0,0.1); background: #fff; }
+    .cart-item-img { width: 100%; height: 100%; object-fit: contain; }
+
+    .cart-item-details { flex: 1; min-width: 0; }
+    .cart-item-cat { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 1px; display: block; margin-bottom: 5px; }
+    .cart-item-name { font-weight: 700; font-size: 1.1rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; }
+    .cart-item-meta { display: flex; align-items: center; gap: 10px; }
+    .cart-item-sku { font-size: .75rem; color: var(--text-muted); }
+    .cart-item-price-mobile { display: none; }
+
+    /* ── CART ITEM DETAILS ── */
+    .unit-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+    .unit-val { font-weight: 600; color: #d0d2e0; font-size: 1.05rem; }
+    .subtotal-val { font-weight: 800; color: var(--primary); font-size: 1.15rem; }
+
+    .qty-control { display: flex; align-items: center; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3); width: fit-content; }
+    .qty-btn { background: transparent; border: none; color: var(--text); width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; transition: all 0.2s; font-size: 1.2rem; }
+    .qty-btn:hover:not(:disabled) { background: rgba(91,141,238,0.2); color: var(--primary); }
+    .qty-btn:disabled { color: rgba(0,0,0,0.2); cursor: not-allowed; }
+    .qty-display { width: 40px; text-align: center; font-weight: 600; color: var(--text); font-size: 1rem; border-left: 1px solid rgba(0,0,0,0.1); border-right: 1px solid rgba(0,0,0,0.1); }
+
+    .remove-btn { width: 44px; height: 44px; border-radius: 12px; background: rgba(240,98,146,0.08); color: var(--secondary); border: 1px solid transparent; display: grid; place-items: center; cursor: pointer; transition: all 0.3s; margin-left: 15px; font-size: 1.2rem; }
+    .remove-btn:hover { background: var(--secondary); color: var(--text); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(240,98,146,0.3); }
+
+    /* ── PROMO BOX ── */
+    .promo-box { background: var(--surface); border: 1px dashed rgba(91,141,238,0.4); border-radius: var(--r-xl); padding: 25px; display: flex; align-items: center; gap: 20px; margin-top: 24px; transition: all 0.3s ease; }
+    .promo-box:hover { border-style: solid; border-color: var(--primary); box-shadow: 0 5px 15px rgba(91,141,238,0.1); }
+    .promo-icon { font-size: 2rem; color: var(--primary); background: rgba(91,141,238,0.1); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    .promo-content { flex: 1; }
+    .promo-content strong { display: block; color: var(--text); font-size: 1.05rem; margin-bottom: 4px; }
+    .promo-content span { font-size: 0.85rem; color: var(--text-muted); }
+    .promo-input-wrap { display: flex; gap: 10px; }
+    .promo-input-wrap .form-control { width: 180px; background: rgba(0,0,0,0.3); border-color: rgba(0,0,0,0.1); color: var(--text); height: 44px; }
+    .promo-input-wrap .btn { height: 44px; padding: 0 20px; font-weight: 600; }
+
+    .promo-success { margin-top: 15px; padding: 15px 20px; background: rgba(46,196,182,0.1); border: 1px solid rgba(46,196,182,0.2); border-radius: var(--r-md); color: var(--success); font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+    .promo-error { margin-top: 15px; padding: 15px 20px; background: rgba(240,98,146,0.1); border: 1px solid rgba(240,98,146,0.2); border-radius: var(--r-md); color: var(--secondary); font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+
+    .continue-strip { margin-top: 30px; }
+
+    /* ── CART SUMMARY (RIGHT) ── */
+    .cart-summary { background: var(--surface); border: 1px solid rgba(0,0,0,0.05); border-radius: var(--r-xl); padding: 35px; position: sticky; top: 100px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .summary-title { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--text); margin-bottom: 30px; display: flex; align-items: center; gap: 12px; }
+    .summary-title i { color: var(--primary); font-size: 1.4rem; }
+
+    .summary-rows { display: flex; flex-direction: column; gap: 16px; margin-bottom: 25px; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 1rem; color: var(--text-2); }
+    .discount-row { color: var(--success); font-weight: 600; }
+
+    .summary-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: 25px; padding-top: 25px; border-top: 1px dashed rgba(0,0,0,0.1); }
+    .summary-total-row span:first-child { font-size: 1.2rem; font-weight: 600; color: var(--text); }
+    .total-val { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--primary); white-space: nowrap; }
+
+    .summary-divider { height: 1px; background: rgba(0,0,0,0.05); margin: 25px 0; }
+
+    .delivery-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+    .delivery-options { display: flex; flex-direction: column; gap: 12px; }
+    .delivery-opt { display: flex; align-items: center; gap: 15px; padding: 18px; border: 1px solid rgba(0,0,0,0.1); border-radius: var(--r-md); cursor: pointer; transition: all 0.3s ease; }
+    .delivery-opt:hover { border-color: rgba(91,141,238,0.5); background: rgba(91,141,238,0.05); }
+    .delivery-opt.selected { border-color: var(--primary); background: rgba(91,141,238,0.1); box-shadow: 0 4px 15px rgba(91,141,238,0.1); }
+    .opt-info { flex: 1; display: flex; flex-direction: column; cursor: pointer; }
+    .opt-info strong { color: var(--text); font-size: 1rem; margin-bottom: 2px; }
+    .opt-info span { color: var(--text-muted); font-size: 0.8rem; }
+    .opt-price { font-weight: 700; font-size: 0.95rem; }
+
+    .payment-strip { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+    .pay-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+    .pay-icons { display: flex; gap: 10px; }
+    .pay-icon { width: 40px; height: 30px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; display: grid; place-items: center; color: #d0d2e0; font-size: 1.1rem; transition: all 0.2s; }
+    .pay-icon:hover { color: var(--text); border-color: var(--primary); background: rgba(91,141,238,0.1); }
+
+    .checkout-btn { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.5px; height: 56px; display: flex; justify-content: center; align-items: center; gap: 10px; background: var(--primary); border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; color: var(--text); transition: all 0.3s ease; text-transform: uppercase; }
+    .checkout-btn:hover { background: #4a75c7; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(91,141,238,0.25); }
+    .checkout-btn i { font-size: 1.2rem; transition: transform 0.3s; }
+    .checkout-btn:hover i { transform: translateX(5px); }
+
+    .security-note { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .security-note i { color: var(--success); font-size: 1.1rem; }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 992px) {
+        .cart-layout { grid-template-columns: 1fr; }
+        .cart-summary { position: static; margin-top: 30px; }
+    }
+    @@media (max-width: 768px) {
+        .cart-item { flex-wrap: wrap; padding: 20px; gap: 15px; }
+        .cart-item-unit-price { display: none; }
+        .cart-item-details { flex: 1; min-width: 150px; }
+        .cart-item-price-mobile { display: block; font-weight: 700; color: var(--primary); margin-top: 5px; font-size: 1.1rem; }
+        .cart-qty-wrap { margin-left: 0; margin-top: 10px; width: 100%; display: flex; justify-content: space-between; align-items: center; }
+        .cart-item-subtotal { display: none; }
+        .remove-btn { position: absolute; top: 20px; right: 20px; }
+        .cart-item { position: relative; }
+        
+        .promo-box { flex-direction: column; text-align: center; }
+        .promo-input-wrap { width: 100%; flex-direction: column; }
+        .promo-input-wrap .form-control { width: 100%; }
+    }
+</style>
+

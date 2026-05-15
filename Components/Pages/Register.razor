@@ -1,0 +1,609 @@
+@page "/register"
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ShopWaveBlazor.Web.ECommerceAPI.Data.ECommerceDbContext> DbFactory
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+@layout ShopWaveBlazor.Web.Components.Layout.EmptyLayout
+
+<PageTitle>ShopWave — Register</PageTitle>
+
+<div class="reg-page">
+    <div class="reg-bg"></div>
+    <div class="reg-grid"></div>
+    <div class="reg-orb reg-orb1"></div>
+    <div class="reg-orb reg-orb2"></div>
+
+    <div class="reg-wrapper">
+
+        <!-- LEFT PANEL -->
+        <div class="reg-left">
+            <div class="reg-brand">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7QnjcTUOpzRq05tWsyO5NYOmThuRS-5estg&s" alt="Logo" style="height: 42px; width: 42px; border-radius: 10px; object-fit: cover; box-shadow: 0 0 24px rgba(91,141,238,.4);" />
+                <div class="brand-name">Shop<span>Wave</span></div>
+            </div>
+
+            <h2 class="reg-headline">
+                Join Pakistan's<br />
+                <span class="reg-gradient">Smartest Store.</span>
+            </h2>
+            <p class="reg-sub">
+                Millions of products. Fast delivery. Verified sellers.<br />
+                Create your account today — absolutely free!
+            </p>
+
+            <div class="reg-perks">
+                <div class="perk">
+                    <div class="perk-icon blue"><i class="bi bi-bag-heart"></i></div>
+                    <div class="perk-text">
+                        <strong>Exclusive Deals</strong>
+                        <span>Members-only discounts every week</span>
+                    </div>
+                </div>
+                <div class="perk">
+                    <div class="perk-icon pink"><i class="bi bi-bell"></i></div>
+                    <div class="perk-text">
+                        <strong>Order Tracking</strong>
+                        <span>Real-time updates on every order</span>
+                    </div>
+                </div>
+                <div class="perk">
+                    <div class="perk-icon gold"><i class="bi bi-shield-check"></i></div>
+                    <div class="perk-text">
+                        <strong>Buyer Protection</strong>
+                        <span>100% safe & secure shopping</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reg-decor">
+                <div class="decor-ring decor-ring1"></div>
+                <div class="decor-ring decor-ring2"></div>
+                <span>🛍️</span>
+            </div>
+        </div>
+
+        <!-- RIGHT FORM -->
+        <div class="reg-right">
+            <div class="reg-form-box">
+
+                <h1 class="reg-form-title">Create Account</h1>
+                <p class="reg-form-sub">Already have an account? <a href="/login" class="reg-link">Login here</a></p>
+
+                @if (!string.IsNullOrEmpty(successMsg))
+                {
+                    <div class="alert-box success">
+                        <i class="bi bi-check-circle-fill"></i> @successMsg
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(errorMsg))
+                {
+                    <div class="alert-box error">
+                        <i class="bi bi-exclamation-triangle-fill"></i> @errorMsg
+                    </div>
+                }
+
+                <div class="reg-form">
+
+                    <!-- Full Name -->
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-input @(touched && string.IsNullOrWhiteSpace(form.FullName) ? "input-error" : "")"
+                                   placeholder="Ali Hassan"
+                                   @bind="form.FullName" @bind:event="oninput" />
+                        </div>
+                        @if (touched && string.IsNullOrWhiteSpace(form.FullName))
+                        {
+                            <span class="field-error">Full name is required</span>
+                        }
+                    </div>
+
+                    <!-- Username -->
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><i class="bi bi-at"></i></span>
+                            <input type="text" class="form-input @(touched && form.Username.Length < 3 && form.Username.Length > 0 ? "input-error" : "")"
+                                   placeholder="alihassan99"
+                                   @bind="form.Username" @bind:event="oninput" />
+                        </div>
+                        @if (touched && form.Username.Length > 0 && form.Username.Length < 3)
+                        {
+                            <span class="field-error">Min 3 characters</span>
+                        }
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-input"
+                                   placeholder="ali@example.com"
+                                   @bind="form.Email" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="form-group">
+                        <label class="form-label">Phone Number</label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><i class="bi bi-phone"></i></span>
+                            <input type="tel" class="form-input"
+                                   placeholder="+92 300 0000000"
+                                   @bind="form.Phone" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><i class="bi bi-lock"></i></span>
+                            <input type="@(showPass ? "text" : "password")"
+                                   class="form-input @(touched && form.Password.Length < 6 && form.Password.Length > 0 ? "input-error" : "")"
+                                   placeholder="At least 6 characters"
+                                   @bind="form.Password" @bind:event="oninput" />
+                            <button type="button" class="eye-btn" @onclick="() => showPass = !showPass">
+                                <i class="bi @(showPass ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                        @if (form.Password.Length > 0)
+                        {
+                            <div class="password-strength">
+                                <div class="strength-bar">
+                                    <div class="strength-fill @GetStrengthClass()" style="width:@GetStrengthPct()%"></div>
+                                </div>
+                                <span class="strength-label @GetStrengthClass()">@GetStrengthLabel()</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password</label>
+                        <div class="input-wrap">
+                            <span class="input-icon"><i class="bi bi-lock-fill"></i></span>
+                            <input type="@(showConfirm ? "text" : "password")"
+                                   class="form-input @(touched && form.Confirm != form.Password && form.Confirm.Length > 0 ? "input-error" : "")"
+                                   placeholder="Confirm your password"
+                                   @bind="form.Confirm" @bind:event="oninput" />
+                            <button type="button" class="eye-btn" @onclick="() => showConfirm = !showConfirm">
+                                <i class="bi @(showConfirm ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                        @if (touched && form.Confirm.Length > 0 && form.Confirm != form.Password)
+                        {
+                            <span class="field-error">Passwords do not match</span>
+                        }
+                    </div>
+
+                    <!-- User Type -->
+                    <div class="form-group span-2">
+                        <label class="form-label">Account Type</label>
+                        <div class="type-selector">
+                            <div class="type-opt @(form.UserType == "Customer" ? "selected" : "")"
+                                 @onclick='() => form.UserType = "Customer"'>
+                                <i class="bi bi-person-circle"></i>
+                                <span>Customer</span>
+                            </div>
+                            <div class="type-opt @(form.UserType == "Admin" ? "selected" : "")"
+                                 @onclick='() => form.UserType = "Admin"'>
+                                <i class="bi bi-shield-fill"></i>
+                                <span>Admin</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terms -->
+                    <div class="terms-row span-2">
+                        <input type="checkbox" id="terms" @bind="agreedToTerms" />
+                        <label for="terms">
+                            I agree to the <a href="#" class="reg-link">Terms & Conditions</a> and
+                            <a href="#" class="reg-link">Privacy Policy</a>
+                        </label>
+                    </div>
+
+                    <!-- Submit -->
+                    <button class="btn-register span-2" @onclick="HandleRegister" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner"></span>
+                            <span>Creating account...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-person-plus-fill"></i>
+                            <span>Create Account</span>
+                        }
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterForm form = new();
+    private bool showPass    = false;
+    private bool showConfirm = false;
+    private bool agreedToTerms = false;
+    private bool isLoading   = false;
+    private bool touched     = false;
+    private string successMsg = "";
+    private string errorMsg   = "";
+
+    private async Task HandleRegister()
+    {
+        touched   = true;
+        errorMsg  = "";
+        successMsg = "";
+
+        if (string.IsNullOrWhiteSpace(form.FullName))   { errorMsg = "Full name is required."; return; }
+        if (form.Username.Length < 3)                   { errorMsg = "Username must be at least 3 characters."; return; }
+        if (string.IsNullOrWhiteSpace(form.Email))      { errorMsg = "Email address is required."; return; }
+        if (form.Password.Length < 6)                   { errorMsg = "Password must be at least 6 characters."; return; }
+        if (form.Password != form.Confirm)              { errorMsg = "Passwords do not match."; return; }
+        if (!agreedToTerms)                             { errorMsg = "Please agree to the Terms & Conditions."; return; }
+
+        isLoading = true;
+        await Task.Delay(1200); // Simulate network latency
+
+        try
+        {
+            using var Db = await DbFactory.CreateDbContextAsync();
+            var existing = await Db.Users.FirstOrDefaultAsync(u => u.Username == form.Username);
+            if (existing != null)
+            {
+                errorMsg  = "This username is already taken. Please try another one.";
+                isLoading = false;
+                return;
+            }
+
+            var user = new ShopWaveBlazor.Web.ECommerceAPI.Models.User
+            {
+                FullName = form.FullName,
+                Username = form.Username,
+                Email    = form.Email,
+                PhoneNumber = form.Phone,
+                Password = ShopWaveBlazor.Web.ECommerceAPI.Utils.PasswordHelper.HashPassword(form.Password),
+                UserType = form.UserType,
+                IsActive = true,
+                CreatedDate = DateTime.Now
+            };
+
+            Db.Users.Add(user);
+            await Db.SaveChangesAsync();
+
+            successMsg = "Account created successfully! Redirecting to login page...";
+            isLoading  = false;
+            StateHasChanged();
+            await Task.Delay(1500);
+            Navigation.NavigateTo("/login");
+        }
+        catch (Exception ex)
+        {
+            errorMsg  = "An error occurred: " + ex.Message;
+            isLoading = false;
+        }
+    }
+
+    private int GetStrength()
+    {
+        var p = form.Password;
+        if (string.IsNullOrEmpty(p)) return 0;
+        int score = 0;
+        if (p.Length >= 6)  score++;
+        if (p.Length >= 10) score++;
+        if (p.Any(char.IsUpper))  score++;
+        if (p.Any(char.IsDigit))  score++;
+        if (p.Any(ch => !char.IsLetterOrDigit(ch))) score++;
+        return score;
+    }
+
+    private string GetStrengthClass() => GetStrength() switch
+    {
+        <= 1 => "weak",
+        2    => "weak",
+        3    => "medium",
+        4    => "strong",
+        _    => "very-strong"
+    };
+
+    private string GetStrengthLabel() => GetStrength() switch
+    {
+        <= 2 => "Weak",
+        3    => "Medium",
+        4    => "Strong",
+        _    => "Very Strong"
+    };
+
+    private int GetStrengthPct() => GetStrength() * 20;
+
+    private class RegisterForm
+    {
+        public string FullName { get; set; } = "";
+        public string Username { get; set; } = "";
+        public string Email    { get; set; } = "";
+        public string Phone    { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string Confirm  { get; set; } = "";
+        public string UserType { get; set; } = "Customer";
+    }
+}
+
+<style>
+    /* ── PAGE SHELL ── */
+    .reg-page {
+        position: fixed; inset: 0; z-index: 9999;
+        overflow: auto;
+        font-family: 'DM Sans', sans-serif;
+        background: #F6F6F7;
+        color: #111018;
+    }
+    .reg-bg {
+        position: fixed; inset: 0; z-index: 0;
+        background:
+            radial-gradient(ellipse 70% 50% at 0% 0%, rgba(0,0,0,0.05), transparent),
+            radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,0,0,0.05), transparent);
+    }
+    .reg-grid {
+        position: fixed; inset: 0; z-index: 0;
+        background-image:
+            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+        background-size: 44px 44px;
+    }
+    .reg-orb {
+        position: fixed; border-radius: 50%; z-index: 0;
+        filter: blur(80px); pointer-events: none;
+        animation: regFloat 12s ease-in-out infinite alternate;
+    }
+    .reg-orb1 { width:350px; height:350px; top:-80px; left:-60px; background:rgba(0,0,0,0.05); }
+    .reg-orb2 { width:280px; height:280px; bottom:-60px; right:-40px; background:rgba(0,0,0,0.05); animation-delay:-6s; }
+    @@keyframes regFloat { from{transform:translate(0,0)} to{transform:translate(20px,30px)} }
+
+    /* ── LAYOUT ── */
+    .reg-wrapper {
+        position: relative; z-index: 1;
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* ── LEFT PANEL ── */
+    .reg-left {
+        padding: 56px 56px;
+        display: flex; flex-direction: column; justify-content: center;
+        border-right: 1px solid rgba(0,0,0,0.08);
+        position: relative; overflow: hidden;
+    }
+    .reg-left::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: repeating-linear-gradient(
+            -45deg, transparent, transparent 28px,
+            rgba(0,0,0,0.05) 28px, rgba(0,0,0,0.05) 29px
+        );
+    }
+    .reg-brand {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 44px;
+    }
+    .brand-mark {
+        width: 42px; height: 42px; border-radius: 10px;
+        background: #111018;
+        display: grid; place-items: center;
+        font-family: 'Syne', sans-serif; font-weight: 800;
+        font-size: 1rem; color: #111018;
+        box-shadow: 0 0 24px rgba(0,0,0,0.05);
+    }
+    .brand-name {
+        font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; color: #111018;
+    }
+    .brand-name span { color: #111018; }
+
+    .reg-headline {
+        font-family: 'Syne', sans-serif;
+        font-size: 2.2rem; font-weight: 800;
+        line-height: 1.2; margin-bottom: 14px; color: #111018;
+    }
+    .reg-gradient {
+        background: #111018;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .reg-sub {
+        color: #6B7280; font-size: .9rem; line-height: 1.7;
+        margin-bottom: 40px; max-width: 340px;
+    }
+
+    .reg-perks { display: flex; flex-direction: column; gap: 14px; }
+    .perk {
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px 16px;
+        background: rgba(0,0,0,0.03);
+        border: 1px solid rgba(0,0,0,0.08); border-radius: 12px;
+        transition: border-color .25s;
+        animation: perkIn .4s ease both;
+    }
+    .perk:nth-child(1) { animation-delay:.05s }
+    .perk:nth-child(2) { animation-delay:.12s }
+    .perk:nth-child(3) { animation-delay:.19s }
+    @@keyframes perkIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
+    .perk:hover { border-color: rgba(0,0,0,0.05); }
+    .perk-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        display: grid; place-items: center; font-size: 1rem; flex-shrink: 0;
+    }
+    .perk-icon.blue { background:rgba(0,0,0,0.05); color:#111018; }
+    .perk-icon.pink { background:rgba(0,0,0,0.05); color:#111018; }
+    .perk-icon.gold { background:rgba(0,0,0,0.05); color:#111018; }
+    .perk-text strong { display:block; font-size:.84rem; font-weight:600; color:#111018; }
+    .perk-text span   { font-size:.75rem; color:#6B7280; }
+
+    .reg-decor {
+        position: absolute; bottom: 36px; right: 36px;
+        width: 90px; height: 90px; border-radius: 50%;
+        display: grid; place-items: center; font-size: 2rem;
+        border: 1.5px solid rgba(0,0,0,0.08); opacity: .55;
+    }
+    .decor-ring {
+        position: absolute; border-radius: 50%;
+        border: 1.5px solid rgba(0,0,0,0.05);
+        animation: regSpin 18s linear infinite;
+    }
+    .decor-ring1 { width: 90px; height: 90px; }
+    .decor-ring2 { width: 64px; height: 64px; animation-direction: reverse; animation-duration: 10s; }
+    @@keyframes regSpin { to { transform: rotate(360deg); } }
+
+    /* ── RIGHT FORM ── */
+    .reg-right {
+        display: flex; align-items: center; justify-content: center;
+        padding: 24px 40px;
+        overflow-y: auto;
+    }
+    .reg-form-box {
+        width: 100%; max-width: 520px;
+        animation: formSlide .45s ease;
+    }
+    @@keyframes formSlide { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+
+    .reg-form-title {
+        font-family: 'Syne', sans-serif;
+        font-size: 1.9rem; font-weight: 800;
+        color: #111018; margin-bottom: 4px; letter-spacing: -1px;
+    }
+    .reg-form-sub { color: #6B7280; font-size: .86rem; margin-bottom: 20px; }
+    .reg-link { color: #111018; text-decoration: none; font-weight: 600; }
+    .reg-link:hover { opacity: .8; }
+
+    /* ── ALERTS ── */
+    .alert-box {
+        padding: 10px 14px; border-radius: 10px;
+        font-size: .82rem; font-weight: 600;
+        display: flex; align-items: center; gap: 9px;
+        margin-bottom: 14px;
+    }
+    .alert-box.error   { background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.05); color:#111018; }
+    .alert-box.success { background:rgba(86,207,130,.10); border:1px solid rgba(86,207,130,.3); color:#56cf82; }
+
+    /* ── FORM ── */
+    .reg-form { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 12px; 
+    }
+    .span-2 {
+        grid-column: span 2;
+    }
+    .form-group { margin-bottom: 0px; }
+    .form-label {
+        display: block; font-size: .70rem; font-weight: 600;
+        color: #6B7280; margin-bottom: 5px;
+        letter-spacing: .5px; text-transform: uppercase;
+    }
+    .input-wrap { position: relative; }
+    .input-icon {
+        position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+        color: #6B7280; font-size: .95rem; pointer-events: none;
+    }
+    .form-input {
+        width: 100%; padding: 10px 14px 10px 36px;
+        background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 10px; color: #111018;
+        font-family: 'DM Sans', sans-serif; font-size: .84rem;
+        outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    .form-input:focus {
+        border-color: #111018;
+        box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+    }
+    .form-input::placeholder { color: #6B7280; }
+    .form-input.input-error { border-color: rgba(0,0,0,0.05); }
+    .field-error { font-size: .70rem; color: #111018; margin-top: 4px; display: block; }
+    .eye-btn {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        background: none; border: none; color: #6B7280;
+        cursor: pointer; font-size: .90rem; padding: 4px;
+        transition: color .2s;
+    }
+    .eye-btn:hover { color: #111018; }
+
+    /* ── PASSWORD STRENGTH ── */
+    .password-strength { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+    .strength-bar {
+        flex: 1; height: 4px; background: rgba(0,0,0,0.08);
+        border-radius: 4px; overflow: hidden;
+    }
+    .strength-fill { height: 100%; border-radius: 4px; transition: width .4s, background .4s; }
+    .strength-fill.weak        { background: #111018; }
+    .strength-fill.medium      { background: #D9F86B; }
+    .strength-fill.strong      { background: #D9F86B; }
+    .strength-fill.very-strong { background: #56cf82; }
+    .strength-label { font-size: .68rem; font-weight: 700; white-space: nowrap; }
+    .strength-label.weak        { color: #111018; }
+    .strength-label.medium      { color: #D9F86B; }
+    .strength-label.strong      { color: #111018; }
+    .strength-label.very-strong { color: #56cf82; }
+
+    /* ── USER TYPE SELECTOR ── */
+    .type-selector { display: flex; gap: 10px; }
+    .type-opt {
+        flex: 1; padding: 10px 10px;
+        border-radius: 10px; border: 1.5px solid rgba(0,0,0,0.08);
+        background: rgba(0,0,0,0.03); color: #6B7280;
+        cursor: pointer; transition: .2s;
+        display: flex; align-items: center; justify-content: center;
+        gap: 8px; font-size: .82rem; font-weight: 600;
+    }
+    .type-opt:hover { border-color: rgba(0,0,0,0.05); color: #111018; }
+    .type-opt.selected {
+        border-color: #111018; color: #111018;
+        background: rgba(0,0,0,0.05);
+        box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+    }
+
+    /* ── TERMS ── */
+    .terms-row {
+        display: flex; align-items: flex-start; gap: 10px;
+        margin-top: 4px; margin-bottom: 4px;
+    }
+    .terms-row input { accent-color: #111018; margin-top: 3px; flex-shrink: 0; }
+    .terms-row label { font-size: .76rem; color: #6B7280; line-height: 1.5; cursor: pointer; }
+
+    /* ── SUBMIT BTN ── */
+    .btn-register {
+        width: 100%; padding: 12px;
+        background: #D9F86B;
+        border: none; border-radius: 10px;
+        color: #111018; font-family: 'DM Sans', sans-serif;
+        font-size: .90rem; font-weight: 600;
+        cursor: pointer; transition: opacity .2s, transform .15s, box-shadow .2s;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.05);
+        display: flex; align-items: center; justify-content: center; gap: 9px;
+    }
+    .btn-register:hover:not(:disabled) { opacity:.9; transform:translateY(-1px); box-shadow:0 8px 28px rgba(0,0,0,0.05); }
+    .btn-register:active { transform: translateY(0); }
+    .btn-register:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── SPINNER ── */
+    .spinner {
+        width: 16px; height: 16px;
+        border: 2px solid rgba(0,0,0,0.3);
+        border-top-color: #111018; border-radius: 50%;
+        animation: spin-loader .6s linear infinite;
+    }
+    @@keyframes spin-loader { to { transform: rotate(360deg); } }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 768px) {
+        .reg-wrapper { grid-template-columns: 1fr; }
+        .reg-left { display: none; }
+        .reg-right { padding: 24px 16px; }
+        .reg-form { grid-template-columns: 1fr; }
+        .span-2 { grid-column: span 1; }
+    }
+</style>
+

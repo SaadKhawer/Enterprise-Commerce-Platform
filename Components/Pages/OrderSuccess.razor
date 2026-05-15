@@ -1,0 +1,421 @@
+@page "/order-success"
+@page "/order-success/{OrderId:int}"
+@inject NavigationManager Navigation
+
+<PageTitle>ShopWave — Order Placed!</PageTitle>
+
+<div class="success-page">
+
+    <!-- CONFETTI PARTICLES -->
+    <div class="confetti-wrap" aria-hidden="true">
+        @for (int i = 0; i < 22; i++)
+        {
+            var delay  = (i * 0.18).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            var left   = (i * 4.3 % 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+            var color  = confettiColors[i % confettiColors.Length];
+            var size   = (6 + i % 5).ToString();
+            <div class="confetti-piece"
+                 style="left:@(left)%;animation-delay:@(delay)s;background:@color;width:@(size)px;height:@(size)px;">
+            </div>
+        }
+    </div>
+
+    <!-- AMBIENT -->
+    <div class="os-orb os-orb1"></div>
+    <div class="os-orb os-orb2"></div>
+
+    <!-- MAIN CARD -->
+    <div class="os-card">
+
+        <!-- SUCCESS ICON -->
+        <div class="os-icon-wrap">
+            <div class="os-ring os-ring1"></div>
+            <div class="os-ring os-ring2"></div>
+            <div class="os-check">
+                <i class="bi bi-check-lg"></i>
+            </div>
+        </div>
+
+        <!-- HEADING -->
+        <h1 class="os-title">Order Placed!</h1>
+        <p class="os-sub">
+            Shukriya! Aapka order successfully receive ho gaya hai.<br />
+            Jaldi hi aapko confirmation email bheja jayega.
+        </p>
+
+        <!-- ORDER ID BADGE -->
+        <div class="os-order-id">
+            <span class="os-id-label">Order ID</span>
+            <span class="os-id-val">#SW-@confirmedOrderId</span>
+            <button class="os-copy-btn" title="Copy Order ID" @onclick="CopyId" aria-label="Copy order ID">
+                <i class="bi @(copied ? "bi-check2" : "bi-copy")"></i>
+            </button>
+        </div>
+
+        <!-- INFO GRID -->
+        <div class="os-info-grid">
+            <div class="os-info-card">
+                <div class="os-info-icon blue">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="os-info-text">
+                    <strong>Estimated Delivery</strong>
+                    <span>5–7 Business Days</span>
+                </div>
+            </div>
+            <div class="os-info-card">
+                <div class="os-info-icon green">
+                    <i class="bi bi-envelope-check"></i>
+                </div>
+                <div class="os-info-text">
+                    <strong>Confirmation Email</strong>
+                    <span>Aapke email par bheja gaya</span>
+                </div>
+            </div>
+            <div class="os-info-card">
+                <div class="os-info-icon gold">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div class="os-info-text">
+                    <strong>Buyer Protection</strong>
+                    <span>Is order par active hai</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY TIMELINE -->
+        <div class="os-timeline">
+            <div class="os-tl-title">
+                <i class="bi bi-map"></i> Order Journey
+            </div>
+            <div class="os-tl-steps">
+                <div class="os-tl-step done">
+                    <div class="os-tl-dot">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                    <div class="os-tl-connector done"></div>
+                    <div class="os-tl-info">
+                        <span class="os-tl-label">Order Placed</span>
+                        <span class="os-tl-date">Abhi · @DateTime.Now.ToString("dd MMM, hh:mm tt")</span>
+                    </div>
+                </div>
+                <div class="os-tl-step active">
+                    <div class="os-tl-dot active">
+                        <div class="os-tl-pulse"></div>
+                    </div>
+                    <div class="os-tl-connector"></div>
+                    <div class="os-tl-info">
+                        <span class="os-tl-label">Payment Confirming</span>
+                        <span class="os-tl-date">Processing...</span>
+                    </div>
+                </div>
+                <div class="os-tl-step">
+                    <div class="os-tl-dot"></div>
+                    <div class="os-tl-connector"></div>
+                    <div class="os-tl-info">
+                        <span class="os-tl-label">Packed & Shipped</span>
+                        <span class="os-tl-date">@DateTime.Now.AddDays(1).ToString("dd MMM")</span>
+                    </div>
+                </div>
+                <div class="os-tl-step">
+                    <div class="os-tl-dot"></div>
+                    <div class="os-tl-connector"></div>
+                    <div class="os-tl-info">
+                        <span class="os-tl-label">Out for Delivery</span>
+                        <span class="os-tl-date">@DateTime.Now.AddDays(5).ToString("dd MMM")</span>
+                    </div>
+                </div>
+                <div class="os-tl-step">
+                    <div class="os-tl-dot"></div>
+                    <div class="os-tl-connector hidden"></div>
+                    <div class="os-tl-info">
+                        <span class="os-tl-label">Delivered</span>
+                        <span class="os-tl-date">@DateTime.Now.AddDays(7).ToString("dd MMM")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="os-actions">
+            <button class="os-btn-primary"
+                    aria-label="Navigate to My Orders"
+                    @onclick='() => Navigation.NavigateTo("/orders")'>
+                <i class="bi bi-bag-check"></i>
+                My Orders
+            </button>
+            <button class="os-btn-secondary"
+                    aria-label="Continue Shopping"
+                    @onclick='() => Navigation.NavigateTo("/")'>
+                <i class="bi bi-shop"></i>
+                Continue Shopping
+            </button>
+        </div>
+
+        <!-- BOTTOM NOTE -->
+        <p class="os-note">
+            <i class="bi bi-info-circle"></i>
+            Koi masla ho? <a href="mailto:support@shopwave.pk" class="os-note-link">Support se rabta karein</a>
+            ya <a href="mailto:support@shopwave.pk" class="os-note-link">email karein</a>.
+        </p>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public int? OrderId { get; set; }
+
+    private int    confirmedOrderId;
+    private bool   copied = false;
+    private string[] confettiColors = {
+        "#5b8dee","#f06292","#f4c26a","#56cf82",
+        "#7b2ff7","#2ec4b6","#fff","#ff9800"
+    };
+
+    protected override void OnInitialized()
+    {
+        confirmedOrderId = OrderId ?? Random.Shared.Next(10000, 99999);
+    }
+
+    private async Task CopyId()
+    {
+        copied = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        copied = false;
+    }
+}
+
+<style>
+    /* ── PAGE ── */
+    .success-page {
+        min-height: 80vh;
+        display: flex; align-items: center; justify-content: center;
+        position: relative; padding: 40px 20px;
+        overflow: hidden;
+    }
+
+    /* ── AMBIENT ORBS ── */
+    .os-orb {
+        position: fixed; border-radius: 50%;
+        filter: blur(80px); pointer-events: none; z-index: 0;
+    }
+    .os-orb1 {
+        width: 400px; height: 400px; top: -100px; left: -80px;
+        background: radial-gradient(circle, rgba(86,207,130,.12), transparent);
+    }
+    .os-orb2 {
+        width: 300px; height: 300px; bottom: -60px; right: -60px;
+        background: radial-gradient(circle, rgba(91,141,238,.10), transparent);
+    }
+
+    /* ── CONFETTI ── */
+    .confetti-wrap {
+        position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .confetti-piece {
+        position: absolute; top: -10px; border-radius: 2px;
+        opacity: 0;
+        animation: confettiFall 3.5s ease-in forwards;
+    }
+    @@keyframes confettiFall {
+        0%   { transform: translateY(-10px) rotate(0deg);   opacity: 1; }
+        80%  { opacity: 1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ── CARD ── */
+    .os-card {
+        position: relative; z-index: 1;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 52px 48px;
+        max-width: 580px; width: 100%;
+        text-align: center;
+        animation: cardRise .5s cubic-bezier(.22,1,.36,1);
+    }
+    @@keyframes cardRise {
+        from { opacity: 0; transform: translateY(24px) scale(.97); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    /* ── SUCCESS ICON ── */
+    .os-icon-wrap {
+        position: relative; width: 96px; height: 96px;
+        margin: 0 auto 24px; display: grid; place-items: center;
+    }
+    .os-ring {
+        position: absolute; border-radius: 50%;
+        border: 1.5px solid rgba(86,207,130,.2);
+        animation: ringPulse 2.5s ease-in-out infinite;
+    }
+    .os-ring1 { width: 96px;  height: 96px; }
+    .os-ring2 { width: 72px;  height: 72px; animation-delay: .4s; }
+    @@keyframes ringPulse {
+        0%,100% { transform: scale(1);    opacity: .6; }
+        50%     { transform: scale(1.07); opacity: 1;  }
+    }
+    .os-check {
+        width: 70px; height: 70px; border-radius: 50%;
+        background: linear-gradient(135deg, #2ec4b6, #56cf82);
+        display: grid; place-items: center;
+        font-size: 2rem; color: var(--text);
+        box-shadow: 0 0 40px rgba(86,207,130,.35);
+        animation: checkPop .45s cubic-bezier(.175,.885,.32,1.275) .1s both;
+    }
+    @@keyframes checkPop {
+        from { transform: scale(0); opacity: 0; }
+        to   { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── HEADING ── */
+    .os-title {
+        font-family: 'Syne', sans-serif;
+        font-size: 2.2rem; font-weight: 800;
+        color: var(--text); margin-bottom: 10px; letter-spacing: -1px;
+    }
+    .os-sub {
+        color: var(--text-2); font-size: .9rem;
+        line-height: 1.75; margin-bottom: 24px;
+    }
+
+    /* ── ORDER ID BADGE ── */
+    .os-order-id {
+        display: inline-flex; align-items: center; gap: 10px;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--r-full); padding: 10px 20px;
+        margin-bottom: 28px;
+    }
+    .os-id-label {
+        font-size: .7rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 1px; color: var(--text-muted);
+    }
+    .os-id-val {
+        font-family: monospace; font-size: 1rem; font-weight: 800;
+        color: var(--primary); letter-spacing: .5px;
+    }
+    .os-copy-btn {
+        background: none; border: none; color: var(--text-muted);
+        cursor: pointer; font-size: .9rem; padding: 2px 4px;
+        transition: color .2s;
+    }
+    .os-copy-btn:hover { color: var(--success); }
+
+    /* ── INFO GRID ── */
+    .os-info-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 12px; margin-bottom: 28px;
+    }
+    .os-info-card {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--r-lg); padding: 16px 12px;
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        transition: var(--t);
+    }
+    .os-info-card:hover { border-color: var(--border-light); }
+    .os-info-icon {
+        width: 42px; height: 42px; border-radius: var(--r-md);
+        display: grid; place-items: center; font-size: 1.1rem;
+    }
+    .os-info-icon.blue  { background:rgba(91,141,238,.12);  color:var(--primary); }
+    .os-info-icon.green { background:rgba(86,207,130,.12);  color:var(--success); }
+    .os-info-icon.gold  { background:rgba(244,194,106,.12); color:var(--gold); }
+    .os-info-text strong { display:block; font-size:.8rem; font-weight:700; color: var(--text); margin-bottom:2px; }
+    .os-info-text span   { font-size:.72rem; color:var(--text-muted); }
+
+    /* ── TIMELINE ── */
+    .os-timeline {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--r-lg); padding: 20px 22px;
+        margin-bottom: 28px; text-align: left;
+    }
+    .os-tl-title {
+        font-size: .72rem; text-transform: uppercase; letter-spacing: 1px;
+        color: var(--text-muted); font-weight: 700; margin-bottom: 18px;
+        display: flex; align-items: center; gap: 7px;
+    }
+    .os-tl-steps { display: flex; flex-direction: column; }
+    .os-tl-step  { display: flex; align-items: flex-start; gap: 14px; position: relative; }
+
+    .os-tl-dot {
+        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+        border: 2px solid var(--border); background: var(--panel);
+        display: grid; place-items: center; position: relative; z-index: 1;
+        font-size: .7rem; color: var(--text-muted); transition: var(--t);
+    }
+    .os-tl-step.done .os-tl-dot {
+        background: var(--success); border-color: var(--success); color: var(--text);
+    }
+    .os-tl-dot.active {
+        border-color: var(--primary); background: rgba(91,141,238,.12);
+    }
+    .os-tl-pulse {
+        width: 8px; height: 8px; border-radius: 50%; background: var(--primary);
+        animation: tlPulse 1.5s ease infinite;
+    }
+    @@keyframes tlPulse {
+        0%,100% { transform: scale(1);   opacity: 1; }
+        50%     { transform: scale(1.6); opacity: .5; }
+    }
+
+    .os-tl-connector {
+        position: absolute; left: 12px; top: 26px;
+        width: 2px; height: calc(100% + 6px);
+        background: var(--border); z-index: 0;
+    }
+    .os-tl-connector.done { background: var(--success); }
+    .os-tl-connector.hidden { display: none; }
+
+    .os-tl-info { padding-bottom: 16px; }
+    .os-tl-label {
+        display: block; font-size: .85rem; font-weight: 600; color: var(--text);
+    }
+    .os-tl-step:not(.done):not(.active) .os-tl-label { color: var(--text-muted); }
+    .os-tl-date { font-size: .72rem; color: var(--text-muted); }
+
+    /* ── ACTIONS ── */
+    .os-actions {
+        display: flex; gap: 12px; justify-content: center;
+        flex-wrap: wrap; margin-bottom: 22px;
+    }
+    .os-btn-primary {
+        padding: 13px 28px;
+        background: linear-gradient(135deg, var(--primary), #3a6fd8);
+        border: none; border-radius: var(--r-lg);
+        color: var(--text); font-family: 'DM Sans', sans-serif;
+        font-size: .92rem; font-weight: 600; cursor: pointer;
+        transition: opacity .2s, transform .15s, box-shadow .2s;
+        box-shadow: 0 6px 20px rgba(91,141,238,.35);
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .os-btn-primary:hover { opacity:.9; transform:translateY(-2px); }
+
+    .os-btn-secondary {
+        padding: 13px 28px;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--r-lg); color: var(--text-2);
+        font-family: 'DM Sans', sans-serif;
+        font-size: .92rem; font-weight: 600; cursor: pointer;
+        transition: var(--t);
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .os-btn-secondary:hover { border-color: var(--border-light); color: var(--text); transform: translateY(-2px); }
+
+    /* ── BOTTOM NOTE ── */
+    .os-note {
+        font-size: .78rem; color: var(--text-muted);
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .os-note-link {
+        color: var(--primary); text-decoration: none; font-weight: 600;
+        transition: opacity .2s;
+    }
+    .os-note-link:hover { opacity: .75; }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 600px) {
+        .os-card { padding: 36px 22px; }
+        .os-info-grid { grid-template-columns: 1fr; }
+        .os-title { font-size: 1.7rem; }
+    }
+</style>
+

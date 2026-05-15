@@ -1,0 +1,697 @@
+@page "/dashboard"
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject IDbContextFactory<ShopWaveBlazor.Web.ECommerceAPI.Data.ECommerceDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+@* ── AUTH GUARD ──
+   IsAdmin check teen jagah:
+   1. OnInitializedAsync  → server-side redirect (SSR)
+   2. OnAfterRenderAsync  → client-side redirect (Blazor Server)
+   3. Template level      → koi bhi flash nahi dikhta
+*@
+@using Microsoft.EntityFrameworkCore
+
+@if (!AuthService.IsAuthenticated)
+{
+    @* Redirect ho raha hai — kuch mat dikhao *@
+}
+else if (!AuthService.IsAdmin)
+{
+    <!-- ACCESS DENIED -->
+    <div class="access-denied-wrap">
+        <div class="ad-orb ad-orb1"></div>
+        <div class="ad-orb ad-orb2"></div>
+        <div class="access-denied-card">
+            <div class="ad-icon">
+                <i class="bi bi-shield-lock-fill"></i>
+            </div>
+            <h2>Access Denied</h2>
+            <p>
+                Ye page sirf <strong>Admin</strong> ke liye reserved hai.<br />
+                Aapke paas is dashboard ko dekhne ki permission nahi hai.
+            </p>
+            <div class="ad-actions">
+                <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/")'>
+                    <i class="bi bi-house"></i> Return to Home
+                </button>
+                <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/orders")'>
+                    <i class="bi bi-bag-check"></i> My Orders
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else if (isLoading)
+{
+    <!-- SKELETON LOADING -->
+    <div class="dash-skeleton">
+        <div class="skeleton" style="height:180px; border-radius:20px; margin-bottom:24px;"></div>
+        <div class="stat-grid">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="skeleton" style="height:120px; border-radius:16px;"></div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <!-- ── FULL ADMIN DASHBOARD ── -->
+    <div class="dashboard-wrapper" id="dashboard-pdf-content">
+
+        <!-- LIVE TICKER -->
+        <div class="live-ticker stagger-in">
+            <div class="ticker-track">
+                <span class="ticker-item"><span class="ticker-dot green"></span> Revenue Today: <span class="ticker-val">Rs. 48,200</span></span>
+                <span class="ticker-item"><span class="ticker-dot blue"></span> Orders Today: <span class="ticker-val">12</span></span>
+                <span class="ticker-item"><span class="ticker-dot gold"></span> Avg Order Value: <span class="ticker-val">Rs. 4,016</span></span>
+                <span class="ticker-item"><span class="ticker-dot green"></span> Conversion Rate: <span class="ticker-val">3.8%</span></span>
+                <span class="ticker-item"><span class="ticker-dot blue"></span> Active Users: <span class="ticker-val">24</span></span>
+                <span class="ticker-item"><span class="ticker-dot green"></span> Revenue Today: <span class="ticker-val">Rs. 48,200</span></span>
+                <span class="ticker-item"><span class="ticker-dot blue"></span> Orders Today: <span class="ticker-val">12</span></span>
+                <span class="ticker-item"><span class="ticker-dot gold"></span> Avg Order Value: <span class="ticker-val">Rs. 4,016</span></span>
+            </div>
+        </div>
+
+        <!-- HERO BANNER with Mesh Gradient -->
+        <div class="dash-banner stagger-in" style="margin-top:16px;">
+            <div class="hero-mesh">
+                <div class="mesh-blob"></div>
+                <div class="mesh-blob"></div>
+                <div class="mesh-blob"></div>
+            </div>
+            <div class="db-grid"></div>
+            <div class="banner-content">
+                <span class="badge-premium">
+                    <i class="bi bi-shield-fill-check"></i> COMMAND CENTER
+                </span>
+                <h1 style="font-size:2.5rem;">Master Dashboard</h1>
+                <p>
+                    Welcome back, <strong>@AuthService.CurrentUser?.FullName</strong>!
+                    Store performance is up <strong style="color:#00D4AA;">14%</strong> this week. 🚀
+                </p>
+                <div class="banner-actions">
+                    <button class="btn-glass" style="border:1px solid rgba(79,142,247,.3);" @onclick="RefreshData">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Data
+                    </button>
+                    <button class="btn-glass" style="background:linear-gradient(135deg,#4F8EF7,#7B61FF); border:none;" @onclick="ExportReport">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Export Report
+                    </button>
+                </div>
+            </div>
+            <div class="banner-visual" style="z-index:1;">
+                <div class="live-clock" id="hero-clock" style="font-size:1.8rem; font-weight:700; color:rgba(0,0,0,0.6);"></div>
+                <div style="font-size:.7rem; color:var(--text-muted); text-align:center; margin-top:4px;">LIVE</div>
+            </div>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card blue stagger-in">
+                <div class="stat-header">
+                    <div class="icon-box"><i class="bi bi-currency-dollar"></i></div>
+                    <span class="stat-trend up">↑ 14%</span>
+                </div>
+                <div class="stat-label">Total Revenue</div>
+                <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+                    <div class="stat-value" id="kpi-revenue">Rs. 0</div>
+                    <div class="sparkline-wrap"><canvas id="spark-revenue"></canvas></div>
+                </div>
+                <div class="stat-sub">vs last month</div>
+            </div>
+            <div class="stat-card pink stagger-in">
+                <div class="stat-header">
+                    <div class="icon-box"><i class="bi bi-bag-check"></i></div>
+                    <span class="stat-trend up">↑ 8%</span>
+                </div>
+                <div class="stat-label">Total Orders</div>
+                <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+                    <div class="stat-value" id="kpi-orders">0</div>
+                    <div class="sparkline-wrap"><canvas id="spark-orders"></canvas></div>
+                </div>
+                <div class="stat-sub">@pendingOrders pending</div>
+            </div>
+            <div class="stat-card green stagger-in">
+                <div class="stat-header">
+                    <div class="icon-box"><i class="bi bi-box-seam"></i></div>
+                    <span class="stat-trend down">↓ 3%</span>
+                </div>
+                <div class="stat-label">Total Products</div>
+                <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+                    <div class="stat-value" id="kpi-products">0</div>
+                    <div class="sparkline-wrap"><canvas id="spark-products"></canvas></div>
+                </div>
+                <div class="stat-sub">@lowStockCount low stock</div>
+            </div>
+            <div class="stat-card gold stagger-in">
+                <div class="stat-header">
+                    <div class="icon-box"><i class="bi bi-people"></i></div>
+                    <span class="stat-trend up">↑ 22%</span>
+                </div>
+                <div class="stat-label">Total Customers</div>
+                <div style="display:flex; align-items:flex-end; justify-content:space-between;">
+                    <div class="stat-value" id="kpi-customers">0</div>
+                    <div class="sparkline-wrap"><canvas id="spark-customers"></canvas></div>
+                </div>
+                <div class="stat-sub">new this month</div>
+            </div>
+        </div>
+
+        <!-- MIDDLE ROW: CHART + TOP PRODUCTS -->
+        <div class="dash-mid-row stagger-in">
+
+            <!-- REVENUE CHART (Chart.js Area) -->
+            <div class="glass-card dash-chart-card">
+                <div class="card-header-premium">
+                    <h4><i class="bi bi-bar-chart-line"></i> Revenue Overview</h4>
+                    <div style="display:flex; gap:4px; background:var(--panel); border:1px solid var(--border); border-radius:var(--r-full); padding:3px;">
+                        @foreach (var p in new[] { "7D", "30D", "3M", "1Y" })
+                        {
+                            <button class="rpt-btn @(chartPeriod == p ? "active" : "")"
+                                    @onclick="() => SetChartPeriod(p)">@p</button>
+                        }
+                    </div>
+                </div>
+                <div style="padding:16px 20px; height:260px;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- TOP PRODUCTS -->
+            <div class="glass-card">
+                <div class="card-header-premium">
+                    <h4><i class="bi bi-trophy"></i> Top Products</h4>
+                    <span>This Week</span>
+                </div>
+                <div class="top-products-list">
+                    @* ✅ FIX 1: topProductSoldCounts use kar rahe hain — Random loop mein nahi *@
+                    @foreach (var (product, index) in topProducts.Select((p, i) => (p, i)))
+                    {
+                        <div class="top-prod-item">
+                            <div class="top-rank @(index == 0 ? "gold" : index == 1 ? "silver" : "bronze")">
+                                @(index + 1)
+                            </div>
+                            <img src="@GetProductImage(product.ProductName, product.Category?.CategoryName)"
+                                 alt="@product.ProductName"
+                                 onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=80&q=80'" />
+                            <div class="prod-info">
+                                <strong>@product.ProductName</strong>
+                                <span>@(product.Category?.CategoryName ?? "General")</span>
+                            </div>
+                            <div class="prod-stats">
+                                <span class="prod-price">Rs. @product.Price.ToString("N0")</span>
+                                <span class="prod-sold">@topProductSoldCounts[index] sold</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM ROW: RECENT ORDERS + LOW STOCK -->
+        <div class="dash-bottom-row">
+
+            <!-- RECENT ORDERS TABLE -->
+            <div class="glass-card">
+                <div class="card-header-premium">
+                    <h4><i class="bi bi-clock-history"></i> Recent Orders</h4>
+                    <button class="btn btn-ghost btn-sm btn-view-all" @onclick='() => Navigation.NavigateTo("/orders")'>
+                        View All <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in recentOrders)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="order-id-mono">#@order.OrderID.ToString("D5")</span>
+                                    </td>
+                                    <td>
+                                        <div class="customer-cell">
+                                            <div class="cust-avatar">@(order.User?.FullName?[0] ?? 'U')</div>
+                                            <span>@(order.User?.FullName ?? "Customer")</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="product-cell">
+                                            @(order.OrderDetails?.FirstOrDefault()?.Product?.ProductName ?? "—")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="amount-cell">Rs. @order.TotalAmount.ToString("N0")</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadge(order.OrderStatus)">
+                                            @order.OrderStatus
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="date-cell">@order.OrderDate.ToString("dd MMM")</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- LOW STOCK ALERT -->
+            <div class="glass-card">
+                <div class="card-header-premium">
+                    <h4><span class="pulse-dot" style="display:inline-block; margin-right:8px;"></span> Low Stock Alert</h4>
+                    <span class="badge badge-warning">@lowStockProducts.Count items</span>
+                </div>
+                <div class="low-stock-list">
+                    @if (!lowStockProducts.Any())
+                    {
+                        <div class="no-alerts">
+                            <i class="bi bi-check-circle text-success"></i>
+                            <span>All products well stocked!</span>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var product in lowStockProducts)
+                        {
+                            <div class="low-stock-item">
+                                <img src="@GetProductImage(product.ProductName, product.Category?.CategoryName)"
+                                     alt="@product.ProductName"
+                                     onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=80&q=80'" />
+                                <div class="ls-info">
+                                    <strong>@product.ProductName</strong>
+                                    <div class="ls-bar-wrap">
+                                        <div class="ls-bar">
+                                            <div class="ls-bar-fill @(product.StockQuantity <= 2 ? "critical" : "low")"
+                                                 style="width: @(product.StockQuantity * 10)%">
+                                            </div>
+                                        </div>
+                                        <span class="ls-qty @(product.StockQuantity <= 2 ? "text-danger" : "text-warning")">
+                                            @product.StockQuantity left
+                                        </span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline btn-sm btn-restock">
+                                    <i class="bi bi-plus"></i> Restock
+                                </button>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private decimal totalRevenue;
+    private int totalOrders, totalProducts, totalCustomers, pendingOrders, lowStockCount;
+
+    private List<ShopWaveBlazor.Web.ECommerceAPI.Models.Product> topProducts      = new();
+    private List<ShopWaveBlazor.Web.ECommerceAPI.Models.Product> lowStockProducts = new();
+    private List<ShopWaveBlazor.Web.ECommerceAPI.Models.Order>   recentOrders     = new();
+
+    // ✅ FIX 1: Pre-calculated "sold" counts — loop mein new Random() nahi
+    private List<int> topProductSoldCounts = new();
+
+    private string chartPeriod = "7D";
+    private record ChartBar(string Day, decimal Value, int Pct, bool IsHighest);
+    private List<ChartBar> chartData = new();
+
+    // ── GUARD: server-side ──
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login", replace: true);
+            return;
+        }
+        if (!AuthService.IsAdmin)
+        {
+            isLoading = false;
+            return;
+        }
+        await LoadData();
+    }
+
+    // ── GUARD: client-side ──
+    private bool pendingAnimations = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!AuthService.IsAuthenticated)
+                Navigation.NavigateTo("/login", replace: true);
+            else if (!AuthService.IsAdmin)
+                Navigation.NavigateTo("/", replace: true);
+        }
+
+        if (pendingAnimations)
+        {
+            pendingAnimations = false;
+            try
+            {
+                await Task.Delay(100); // let DOM settle
+                await JSRuntime.InvokeVoidAsync("startClock", "hero-clock");
+                await JSRuntime.InvokeVoidAsync("animateCountUp", "kpi-revenue", (int)totalRevenue, 1200, "Rs. ", "");
+                await JSRuntime.InvokeVoidAsync("animateCountUp", "kpi-orders", totalOrders, 1000, "", "");
+                await JSRuntime.InvokeVoidAsync("animateCountUp", "kpi-products", totalProducts, 1000, "", "");
+                await JSRuntime.InvokeVoidAsync("animateCountUp", "kpi-customers", totalCustomers, 1000, "", "");
+                await JSRuntime.InvokeVoidAsync("drawSparkline", "spark-revenue", new[] { 30, 45, 38, 52, 48, 65, 72 }, "rgb(79,142,247)");
+                await JSRuntime.InvokeVoidAsync("drawSparkline", "spark-orders", new[] { 12, 18, 15, 22, 20, 28, 25 }, "rgb(255,77,109)");
+                await JSRuntime.InvokeVoidAsync("drawSparkline", "spark-products", new[] { 50, 48, 52, 47, 55, 53, 56 }, "rgb(0,212,170)");
+                await JSRuntime.InvokeVoidAsync("drawSparkline", "spark-customers", new[] { 3, 4, 2, 5, 4, 6, 6 }, "rgb(255,140,66)");
+                // Revenue Chart.js
+                var labels = chartData.Select(c => c.Day).ToArray();
+                var values = chartData.Select(c => (int)c.Value).ToArray();
+                await JSRuntime.InvokeVoidAsync("renderRevenueChart", "revenueChart", labels, values);
+            }
+            catch { }
+        }
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        using var Db = await DbFactory.CreateDbContextAsync();
+
+        totalProducts  = await Db.Products.CountAsync();
+        totalOrders    = await Db.Orders.CountAsync();
+        totalCustomers = await Db.Users.CountAsync();
+        totalRevenue   = await Db.Orders.SumAsync(o => o.TotalAmount);
+        pendingOrders  = await Db.Orders.CountAsync(o => o.OrderStatus == "Pending");
+        lowStockCount  = await Db.Products.CountAsync(p => p.StockQuantity <= 5);
+
+        topProducts = await Db.Products
+            .OrderByDescending(p => p.Price)
+            .Take(5).ToListAsync();
+
+        lowStockProducts = await Db.Products
+            .Where(p => p.StockQuantity <= 10)
+            .OrderBy(p => p.StockQuantity)
+            .Take(6).ToListAsync();
+
+        recentOrders = await Db.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderDetails).ThenInclude(d => d.Product)
+            .OrderByDescending(o => o.OrderDate)
+            .Take(6).ToListAsync();
+
+        // ✅ FIX 1: Single Random instance — ek baar pre-calculate, render mein use
+        var rnd = new Random();
+        topProductSoldCounts = topProducts.Select(_ => rnd.Next(20, 120)).ToList();
+
+        // Chart data — last 7 days
+        var days = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        var vals = days.Select(_ => (decimal)rnd.Next(20000, 95000)).ToList();
+        var max  = vals.Max();
+        chartData = days.Zip(vals, (d, v) =>
+            new ChartBar(d, v, (int)(v / max * 100), v == max)).ToList();
+
+        isLoading = false;
+        pendingAnimations = true;
+    }
+
+    private async Task RefreshData() => await LoadData();
+
+    private async Task ExportReport()
+    {
+        await JSRuntime.InvokeVoidAsync("generatePDF", "dashboard-pdf-content", $"ShopWave_Dashboard_{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    private string GetStatusBadge(string? status) => status switch
+    {
+        "Delivered" => "badge-success",
+        "Shipped"   => "badge-info",
+        "Pending"   => "badge-warning",
+        "Cancelled" => "badge-danger",
+        _           => "badge-muted"
+    };
+
+    private async Task SetChartPeriod(string p)
+    {
+        chartPeriod = p;
+        pendingAnimations = true;
+        StateHasChanged();
+    }
+
+    private string GetProductImage(string? name, string? category)
+    {
+        var nm  = name?.ToLower()     ?? "";
+        var cat = category?.ToLower() ?? "";
+
+        if (nm.Contains("laptop"))                          return "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=200&q=80";
+        if (nm.Contains("phone") || nm.Contains("mobile")) return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&q=80";
+        if (nm.Contains("headphone"))                       return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80";
+        if (nm.Contains("watch"))                           return "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&q=80";
+        if (nm.Contains("camera"))                          return "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=200&q=80";
+        if (nm.Contains("shirt"))                           return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&q=80";
+        if (nm.Contains("shoe"))                            return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&q=80";
+        if (nm.Contains("book"))                            return "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=200&q=80";
+        if (cat.Contains("electronic"))                     return "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=80";
+        if (cat.Contains("cloth"))                          return "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&q=80";
+
+        return "https://images.unsplash.com/photo-1560472355-536de3962603?w=200&q=80";
+    }
+}
+
+<style>
+    /* ── ACCESS DENIED ── */
+    .access-denied-wrap {
+        min-height: 60vh;
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+    }
+    .ad-orb {
+        position: absolute; border-radius: 50%;
+        filter: blur(60px); pointer-events: none;
+    }
+    .ad-orb1 {
+        width: 300px; height: 300px; top: 0; left: 20%;
+        background: radial-gradient(circle, rgba(240,98,146,.1), transparent);
+    }
+    .ad-orb2 {
+        width: 200px; height: 200px; bottom: 0; right: 20%;
+        background: radial-gradient(circle, rgba(91,141,238,.1), transparent);
+    }
+    .access-denied-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 52px 48px;
+        text-align: center; max-width: 480px; width: 100%;
+        position: relative; z-index: 1;
+    }
+    .ad-icon {
+        font-size: 4.5rem; color: var(--danger);
+        margin-bottom: 18px;
+        animation: shake .5s ease;
+    }
+    @@keyframes shake {
+        0%,100% { transform: translateX(0); }
+        20%      { transform: translateX(-8px) rotate(-4deg); }
+        40%      { transform: translateX(8px) rotate(4deg); }
+        60%      { transform: translateX(-5px); }
+        80%      { transform: translateX(5px); }
+    }
+    .access-denied-card h2 {
+        font-family: var(--font-display); font-size: 1.8rem;
+        font-weight: 800; color: var(--text); margin-bottom: 12px;
+    }
+    .access-denied-card p {
+        color: var(--text-2); font-size: .9rem;
+        line-height: 1.8; margin-bottom: 28px;
+    }
+    .ad-actions { display: flex; gap: 12px; justify-content: center; }
+
+    /* ── DASHBOARD BANNER ── */
+    .dash-banner {
+        background: linear-gradient(135deg, var(--accent-blue) 0%, var(--surface) 100%);
+        border-radius: var(--r-xl); padding: 38px 40px;
+        margin-bottom: 24px; position: relative; overflow: hidden;
+        border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .db-grid {
+        position: absolute; inset: 0;
+        background-image:
+            linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+        background-size: 32px 32px;
+    }
+    .banner-content { position: relative; z-index: 1; }
+    .badge-premium {
+        background: rgba(255,255,255,0.6); backdrop-filter: blur(4px);
+        border: 1px solid var(--border);
+        padding: 5px 14px; border-radius: var(--r-full);
+        font-size: .65rem; font-weight: 700; letter-spacing: 1.5px;
+        color: var(--primary); display: inline-flex; align-items: center;
+        gap: 6px; margin-bottom: 12px;
+    }
+    .dash-banner h1 {
+        font-family: var(--font-display); font-size: 2rem;
+        font-weight: 800; color: var(--text); margin-bottom: 8px;
+    }
+    .dash-banner p { color: rgba(0,0,0,0.75); font-size: .9rem; margin-bottom: 18px; }
+    .banner-actions { display: flex; gap: 10px; }
+    .btn-glass {
+        background: rgba(255,255,255,0.5); backdrop-filter: blur(6px);
+        border: 1px solid var(--border); color: var(--primary);
+        padding: 9px 18px; border-radius: var(--r-md); font-weight: 600;
+        cursor: pointer; font-family: var(--font-body); font-size: .82rem;
+        display: inline-flex; align-items: center; gap: 8px; transition: var(--t);
+    }
+    .btn-glass:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+
+    .banner-visual {
+        position: relative; flex-shrink: 0;
+        width: 160px; height: 160px;
+        display: grid; place-items: center;
+    }
+    .bv-ring {
+        position: absolute; border-radius: 50%;
+        border: 1px solid rgba(0,0,0,0.08);
+    }
+    .bv-ring1 { width: 160px; height: 160px; animation: spin 12s linear infinite; }
+    .bv-ring2 { width: 110px; height: 110px; animation: spin 8s linear infinite reverse; }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+    .bv-icon { font-size: 3.5rem; position: relative; z-index: 1; }
+
+    /* ── STAT CARDS ── */
+    .stat-sub { font-size: .72rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── MIDDLE ROW ── */
+    .dash-mid-row {
+        display: grid; grid-template-columns: 1fr 360px;
+        gap: 20px; margin-bottom: 20px;
+    }
+
+    /* ── CHART ── */
+    .dash-chart-card { }
+    .chart-body {
+        display: flex; gap: 12px; padding: 20px 22px; height: 220px;
+    }
+    .chart-y-labels {
+        display: flex; flex-direction: column;
+        justify-content: space-between; align-items: flex-end;
+        padding-bottom: 22px;
+    }
+    .chart-y-labels span { font-size: .65rem; color: var(--text-muted); white-space: nowrap; }
+    .chart-bars-wrap {
+        display: flex; align-items: flex-end; gap: 10px; flex: 1;
+    }
+    .chart-bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 6px; }
+    .chart-bar-track {
+        flex: 1; width: 100%; display: flex;
+        align-items: flex-end; position: relative;
+    }
+    .chart-bar {
+        width: 100%; border-radius: 6px 6px 0 0;
+        background: var(--info-bg);
+        transition: height .6s cubic-bezier(.34,1.56,.64,1);
+        cursor: pointer; position: relative;
+        min-height: 8px;
+    }
+    .chart-bar.highest { background: linear-gradient(180deg, var(--info), var(--info-bg)); }
+    .chart-bar:hover { background: var(--primary); }
+    .bar-tooltip {
+        position: absolute; bottom: calc(100% + 6px); left: 50%;
+        transform: translateX(-50%);
+        background: var(--panel-2); border: 1px solid var(--border);
+        color: var(--text); font-size: .7rem; padding: 4px 8px;
+        border-radius: var(--r-sm); white-space: nowrap;
+        opacity: 0; pointer-events: none; transition: var(--t);
+    }
+    .chart-bar:hover .bar-tooltip { opacity: 1; }
+    .bar-label { font-size: .7rem; color: var(--text-muted); }
+
+    /* ── TOP PRODUCTS ── */
+    .top-rank {
+        width: 26px; height: 26px; border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: .72rem; font-weight: 800; flex-shrink: 0;
+    }
+    .top-rank.gold   { background: rgba(255,215,0,.15);   color: #ffd700; border: 1px solid rgba(255,215,0,.3); }
+    .top-rank.silver { background: rgba(192,192,192,.12); color: #c0c0c0; border: 1px solid rgba(192,192,192,.2); }
+    .top-rank.bronze { background: rgba(205,127,50,.12);  color: #cd7f32; border: 1px solid rgba(205,127,50,.2); }
+    .prod-stats { text-align: right; }
+    .prod-price { display: block; font-weight: 800; color: var(--primary); font-size: .85rem; }
+    .prod-sold  { font-size: .72rem; color: var(--text-muted); }
+
+    /* ── BOTTOM ROW ── */
+    .dash-bottom-row {
+        display: grid; grid-template-columns: 1fr 360px;
+        gap: 20px;
+    }
+
+    /* ── TABLE EXTRAS ── */
+    .order-id-cell { font-family: monospace; color: var(--primary); font-weight: 700; font-size: .82rem; }
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .cust-avatar {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: var(--accent-peach);
+        display: grid; place-items: center;
+        font-weight: 700; font-size: .75rem; color: var(--warning); flex-shrink: 0;
+    }
+    .product-cell {
+        max-width: 160px; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis; display: block;
+    }
+    .amount-cell { font-weight: 700; color: var(--text); }
+    .date-cell   { color: var(--text-muted); font-size: .8rem; }
+
+    /* ── LOW STOCK ── */
+    .low-stock-list { padding: 8px 0; }
+    .low-stock-item {
+        display: flex; align-items: center; gap: 14px;
+        padding: 12px 20px; border-bottom: 1px solid var(--border);
+        transition: var(--t);
+    }
+    .low-stock-item:last-child { border-bottom: none; }
+    .low-stock-item:hover { background: var(--panel); }
+    .low-stock-item img {
+        width: 42px; height: 42px; border-radius: var(--r-md);
+        object-fit: cover; flex-shrink: 0; border: 1px solid var(--border);
+    }
+    .ls-info { flex: 1; min-width: 0; }
+    .ls-info strong { display: block; font-size: .82rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ls-bar-wrap { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+    .ls-bar {
+        flex: 1; height: 4px; background: var(--border);
+        border-radius: 4px; overflow: hidden;
+    }
+    .ls-bar-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+    .ls-bar-fill.critical { background: var(--danger); }
+    .ls-bar-fill.low      { background: var(--warning); }
+    .ls-qty { font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .no-alerts {
+        padding: 32px; text-align: center;
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        color: var(--text-muted); font-size: .85rem;
+    }
+    .no-alerts i { font-size: 2rem; color: var(--success); }
+
+    /* ── SKELETON ── */
+    .dash-skeleton { }
+
+    /* ── PERIOD PILLS ── */
+    .rpt-btn {
+        padding:6px 14px; border-radius:var(--r-full); border:none;
+        background:transparent; color:var(--text-2); font-size:.75rem;
+        font-weight:700; font-family: var(--font-body); cursor:pointer; transition:var(--t);
+    }
+    .rpt-btn.active { background:var(--primary); color: #111018; }
+    .rpt-btn:not(.active):hover { color: var(--primary); background: var(--panel-2); }
+</style>
+

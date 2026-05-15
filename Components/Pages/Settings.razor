@@ -1,0 +1,687 @@
+@page "/settings"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+@inject ProtectedLocalStorage LocalStorage
+
+<PageTitle>ShopWave — Settings</PageTitle>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2>Settings</h2>
+        <div class="breadcrumb">
+            Home <i class="bi bi-chevron-right"></i> <span>Settings</span>
+        </div>
+    </div>
+</div>
+
+<div class="settings-layout">
+
+    <!-- SIDEBAR TABS -->
+    <div class="settings-sidebar">
+        @foreach (var tab in settingsTabs)
+        {
+            <button class="stab @(activeTab == tab.Key ? "active" : "")"
+                    aria-label="Settings tab: @tab.Label"
+                    @onclick="() => activeTab = tab.Key">
+                <i class="bi @tab.Icon stab-icon"></i>
+                <span>@tab.Label</span>
+                @if (tab.Key == "notifications" && unreadNotifCount > 0)
+                {
+                    <span class="stab-badge">@unreadNotifCount</span>
+                }
+            </button>
+        }
+    </div>
+
+    <!-- CONTENT PANEL -->
+    <div class="settings-content">
+
+        <!-- ── PROFILE ── -->
+        @if (activeTab == "profile")
+        {
+            <div class="settings-section">
+                <div class="ss-header">
+                    <h3><i class="bi bi-person-circle"></i> Profile Information</h3>
+                    <p>Apni personal details update karein.</p>
+                </div>
+
+                <!-- AVATAR SECTION -->
+                <div class="profile-avatar-section">
+                    <div class="pa-avatar-big">
+                        @(AuthService.CurrentUser?.FullName?[0] ?? 'U')
+                    </div>
+                    <div class="pa-info">
+                        <strong>@AuthService.CurrentUser?.FullName</strong>
+                        <span>@AuthService.CurrentUser?.Email</span>
+                        <button class="btn btn-ghost btn-sm" style="width:fit-content;" aria-label="Change avatar">
+                            <i class="bi bi-camera"></i> Change Avatar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input class="form-control" @bind="profileForm.FullName"
+                               placeholder="Apna poora naam..." aria-label="Full name" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input class="form-control" type="email" @bind="profileForm.Email"
+                               placeholder="email@example.com" aria-label="Email address" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Number</label>
+                        <input class="form-control" type="tel" @bind="profileForm.Phone"
+                               placeholder="+92 3XX XXXXXXX" aria-label="Phone number" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">City</label>
+                        <input class="form-control" @bind="profileForm.City"
+                               placeholder="Lahore, Karachi, Islamabad..." aria-label="City" />
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label class="form-label">Delivery Address</label>
+                        <textarea class="form-control" rows="3" @bind="profileForm.Address"
+                                  placeholder="Ghar / office ka address..." aria-label="Delivery address"></textarea>
+                    </div>
+                </div>
+
+                @if (profileSaved)
+                {
+                    <div class="alert-success-toast">
+                        <i class="bi bi-check-circle-fill"></i> Profile successfully save ho gaya!
+                    </div>
+                }
+
+                <div class="settings-form-actions">
+                    <button class="btn btn-ghost" @onclick="ResetProfile">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                    <button class="btn btn-primary" @onclick="SaveProfile">
+                        <i class="bi bi-floppy"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- ── SECURITY ── -->
+        else if (activeTab == "security")
+        {
+            <div class="settings-section">
+                <div class="ss-header">
+                    <h3><i class="bi bi-shield-lock"></i> Security</h3>
+                    <p>Password aur account security manage karein.</p>
+                </div>
+
+                <!-- CHANGE PASSWORD -->
+                <div class="settings-card">
+                    <div class="sc-icon blue"><i class="bi bi-key"></i></div>
+                    <div class="sc-info">
+                        <strong>Change Password</strong>
+                        <span>Last changed: 30 din pehle</span>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" @onclick="() => showPasswordSection = !showPasswordSection">
+                        @(showPasswordSection ? "Cancel" : "Change")
+                    </button>
+                </div>
+
+                @if (showPasswordSection)
+                {
+                    <div class="settings-form-grid" style="margin-top:16px;">
+                        <div class="form-group">
+                            <label class="form-label">Current Password</label>
+                            <input class="form-control" type="password" @bind="secForm.OldPassword"
+                                   placeholder="Current password..." aria-label="Current password" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">New Password</label>
+                            <input class="form-control" type="password" @bind="secForm.NewPassword"
+                                   placeholder="New password..." aria-label="New password" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Confirm New Password</label>
+                            <input class="form-control" type="password" @bind="secForm.ConfirmPassword"
+                                   placeholder="Confirm password..." aria-label="Confirm new password" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(passwordError))
+                    {
+                        <div class="alert-error-toast"><i class="bi bi-exclamation-triangle-fill"></i> @passwordError</div>
+                    }
+
+                    <div class="settings-form-actions">
+                        <button class="btn btn-primary" @onclick="ChangePassword">
+                            <i class="bi bi-shield-check"></i> Update Password
+                        </button>
+                    </div>
+                }
+
+                <!-- TWO FACTOR -->
+                <div class="settings-card" style="margin-top:12px;">
+                    <div class="sc-icon gold"><i class="bi bi-phone"></i></div>
+                    <div class="sc-info">
+                        <strong>Two-Factor Authentication</strong>
+                        <span>@(twoFactorEnabled ? "Enabled — SMS via phone" : "Not enabled")</span>
+                    </div>
+                    <div class="settings-toggle @(twoFactorEnabled ? "on" : "")"
+                         aria-label="Toggle two-factor authentication"
+                         @onclick="() => twoFactorEnabled = !twoFactorEnabled">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+
+                <!-- ACTIVE SESSIONS -->
+                <div class="ss-sub-header" style="margin-top:24px;">
+                    <h4>Active Sessions</h4>
+                </div>
+                @foreach (var s in activeSessions)
+                {
+                    <div class="settings-card @(s.IsCurrent ? "current-session" : "")">
+                        <div class="sc-icon @(s.IsCurrent ? "green" : "")"><i class="bi @s.Icon"></i></div>
+                        <div class="sc-info">
+                            <strong>@s.Device @(s.IsCurrent ? "(This device)" : "")</strong>
+                            <span>@s.Location — @s.LastActive</span>
+                        </div>
+                        @if (!s.IsCurrent)
+                        {
+                            <button class="btn btn-danger btn-sm" @onclick="() => RevokeSession(s)" aria-label="Revoke session: @s.Device">Revoke</button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- ── NOTIFICATIONS ── -->
+        else if (activeTab == "notifications")
+        {
+            <div class="settings-section">
+                <div class="ss-header">
+                    <h3><i class="bi bi-bell"></i> Notification Preferences</h3>
+                    <p>Decide karein kab aur kaise notifications milein.</p>
+                </div>
+
+                @foreach (var group in notifGroups)
+                {
+                    <div class="notif-group">
+                        <div class="ng-header">@group.Title</div>
+                        @foreach (var item in group.Items)
+                        {
+                            <div class="settings-card">
+                                <div class="sc-icon @item.Color"><i class="bi @item.Icon"></i></div>
+                                <div class="sc-info">
+                                    <strong>@item.Label</strong>
+                                    <span>@item.Desc</span>
+                                </div>
+                                <div class="settings-toggle @(item.Enabled ? "on" : "")"
+                                     aria-label="Toggle @item.Label notifications"
+                                     @onclick="() => item.Enabled = !item.Enabled">
+                                    <div class="toggle-thumb"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- ── APPEARANCE ── -->
+        else if (activeTab == "appearance")
+        {
+            <div class="settings-section">
+                <div class="ss-header">
+                    <h3><i class="bi bi-palette"></i> Appearance</h3>
+                    <p>App ka look aur feel customize karein.</p>
+                </div>
+
+                <div class="ss-sub-header"><h4>Theme</h4></div>
+                <div class="theme-picker">
+                    @foreach (var t in new[] { ("dark", "bi-moon-stars-fill", "Dark"), ("light", "bi-sun-fill", "Light"), ("auto", "bi-circle-half", "System") })
+                    {
+                        <button class="theme-btn @(selectedTheme == t.Item1 ? "active" : "")"
+                                aria-label="Set theme to @t.Item3"
+                                @onclick="() => selectedTheme = t.Item1">
+                            <i class="bi @t.Item2"></i>
+                            <span>@t.Item3</span>
+                        </button>
+                    }
+                </div>
+
+                <div class="ss-sub-header" style="margin-top:24px;"><h4>Accent Color</h4></div>
+                <div class="accent-picker">
+                    @foreach (var c in accentColors)
+                    {
+                        <button class="accent-btn @(selectedAccent == c.Key ? "active" : "")"
+                                style="background:@c.Color;"
+                                @onclick="() => selectedAccent = c.Key"
+                                aria-label="Set accent color to @c.Label"
+                                title="@c.Label">
+                            @if (selectedAccent == c.Key)
+                            {
+                                <i class="bi bi-check-lg"></i>
+                            }
+                        </button>
+                    }
+                </div>
+
+                <div class="ss-sub-header" style="margin-top:24px;"><h4>Language & Region</h4></div>
+                <div class="settings-form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Language</label>
+                        <select class="form-control" @bind="selectedLang" aria-label="Select language">
+                            <option value="ur">اردو (Urdu)</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Currency</label>
+                        <select class="form-control" @bind="selectedCurrency" aria-label="Select currency">
+                            <option value="pkr">PKR — Pakistani Rupee</option>
+                            <option value="usd">USD — US Dollar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-form-actions">
+                    <button class="btn btn-primary" @onclick="SaveAppearance">
+                        <i class="bi bi-floppy"></i> Save Preferences
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- ── ACCOUNT DANGER ZONE ── -->
+        else if (activeTab == "account")
+        {
+            <div class="settings-section">
+                <div class="ss-header">
+                    <h3><i class="bi bi-person-gear"></i> Account</h3>
+                    <p>Account management aur data options.</p>
+                </div>
+
+                <div class="settings-card">
+                    <div class="sc-icon blue"><i class="bi bi-download"></i></div>
+                    <div class="sc-info">
+                        <strong>Download My Data</strong>
+                        <span>Apna poora data JSON format mein download karein.</span>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" aria-label="Download my data">Download</button>
+                </div>
+
+                <div class="settings-card" style="margin-top:8px;">
+                    <div class="sc-icon gold"><i class="bi bi-box-arrow-right"></i></div>
+                    <div class="sc-info">
+                        <strong>Sign Out of All Devices</strong>
+                        <span>Sab devices se logout ho jao.</span>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" aria-label="Sign out of all devices">Sign Out All</button>
+                </div>
+
+                <div class="danger-zone">
+                    <div class="dz-header">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Danger Zone
+                    </div>
+                    <div class="settings-card dz-card">
+                        <div class="sc-icon pink"><i class="bi bi-trash3-fill"></i></div>
+                        <div class="sc-info">
+                            <strong>Delete Account</strong>
+                            <span>Ye action permanently aapka account aur sab data delete kar dega. Wapas nahi ho sakta.</span>
+                        </div>
+                        <button class="btn btn-danger btn-sm" @onclick="() => showDeleteConfirm = true" aria-label="Delete account">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                @if (showDeleteConfirm)
+                {
+                    <div class="dz-confirm">
+                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger); font-size:1.5rem;"></i>
+                        <p>Kya aap <strong>100% sure</strong> hain? Ye action undo nahi ho sakta.</p>
+                        <div class="form-group">
+                            <label class="form-label">Confirm karein — "DELETE" type karein:</label>
+                            <input class="form-control" @bind="deleteConfirmText" placeholder="DELETE" aria-label="Type DELETE to confirm" />
+                        </div>
+                        <div class="settings-form-actions">
+                            <button class="btn btn-ghost" @onclick="() => showDeleteConfirm = false">Cancel</button>
+                            <button class="btn btn-danger"
+                                    disabled="@(deleteConfirmText != "DELETE")"
+                                    @onclick="DeleteAccount">
+                                <i class="bi bi-trash3-fill"></i> Permanently Delete
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    private string activeTab = "profile";
+    private bool profileSaved = false;
+    private bool showPasswordSection = false;
+    private bool twoFactorEnabled = false;
+    private bool showDeleteConfirm = false;
+    private string deleteConfirmText = "";
+    private string passwordError = "";
+    private string selectedTheme = "dark";
+    private string selectedAccent = "blue";
+    private string selectedLang = "en";
+    private string selectedCurrency = "pkr";
+    private int unreadNotifCount = 3;
+
+    private record TabItem(string Key, string Icon, string Label);
+    private List<TabItem> settingsTabs = new()
+    {
+        new("profile",       "bi-person-circle",   "Profile"),
+        new("security",      "bi-shield-lock",     "Security"),
+        new("notifications", "bi-bell",            "Notifications"),
+        new("appearance",    "bi-palette",         "Appearance"),
+        new("account",       "bi-person-gear",     "Account"),
+    };
+
+    private class ProfileForm
+    {
+        public string FullName { get; set; } = "";
+        public string Email    { get; set; } = "";
+        public string Phone    { get; set; } = "";
+        public string City     { get; set; } = "";
+        public string Address  { get; set; } = "";
+    }
+    private ProfileForm profileForm = new();
+
+    private class SecurityForm
+    {
+        public string OldPassword     { get; set; } = "";
+        public string NewPassword     { get; set; } = "";
+        public string ConfirmPassword { get; set; } = "";
+    }
+    private SecurityForm secForm = new();
+
+    private class SessionItem
+    {
+        public string Device     { get; set; } = "";
+        public string Icon       { get; set; } = "";
+        public string Location   { get; set; } = "";
+        public string LastActive { get; set; } = "";
+        public bool   IsCurrent  { get; set; }
+    }
+    private List<SessionItem> activeSessions = new()
+    {
+        new() { Device="Chrome on Windows",  Icon="bi-laptop",       Location="Rawalpindi, PK", LastActive="Abhi",           IsCurrent=true  },
+        new() { Device="Safari on iPhone",   Icon="bi-phone",        Location="Lahore, PK",     LastActive="2 ghante pehle", IsCurrent=false },
+        new() { Device="Firefox on Linux",   Icon="bi-display",      Location="Karachi, PK",    LastActive="1 din pehle",    IsCurrent=false },
+    };
+
+    private class NotifItem
+    {
+        public string Label   { get; set; } = "";
+        public string Desc    { get; set; } = "";
+        public string Icon    { get; set; } = "";
+        public string Color   { get; set; } = "";
+        public bool   Enabled { get; set; } = true;
+    }
+    private class NotifGroup { public string Title { get; set; } = ""; public List<NotifItem> Items { get; set; } = new(); }
+    private List<NotifGroup> notifGroups = new()
+    {
+        new() { Title="Order Notifications", Items = new()
+        {
+            new() { Label="Order Placed",     Desc="Jab order place ho",          Icon="bi-bag-check",       Color="blue",  Enabled=true  },
+            new() { Label="Order Shipped",    Desc="Jab order dispatch ho",       Icon="bi-truck",           Color="green", Enabled=true  },
+            new() { Label="Order Delivered",  Desc="Jab order deliver ho",        Icon="bi-house-check",     Color="gold",  Enabled=true  },
+            new() { Label="Order Cancelled",  Desc="Jab order cancel ho",         Icon="bi-x-circle",        Color="pink",  Enabled=false },
+        }},
+        new() { Title="Promotions & Offers", Items = new()
+        {
+            new() { Label="Flash Sales",      Desc="Limited time deals",          Icon="bi-lightning-charge",Color="gold",  Enabled=true  },
+            new() { Label="Promo Codes",      Desc="Exclusive discount codes",    Icon="bi-tag",             Color="green", Enabled=true  },
+            new() { Label="Newsletter",       Desc="Weekly product highlights",   Icon="bi-envelope",        Color="blue",  Enabled=false },
+        }},
+        new() { Title="Account & Security", Items = new()
+        {
+            new() { Label="Login Alerts",     Desc="Naye device se login",        Icon="bi-shield-lock",     Color="pink",  Enabled=true  },
+            new() { Label="Password Changes", Desc="Password change notifications",Icon="bi-key",            Color="gold",  Enabled=true  },
+        }},
+    };
+
+    private record AccentColor(string Key, string Label, string Color);
+    private List<AccentColor> accentColors = new()
+    {
+        new("blue",   "Blue",   "#5b8dee"),
+        new("purple", "Purple", "#7b2ff7"),
+        new("pink",   "Pink",   "#f06292"),
+        new("green",  "Green",  "#48c78e"),
+        new("gold",   "Gold",   "#f4a261"),
+        new("teal",   "Teal",   "#20c997"),
+    };
+
+    protected override void OnInitialized()
+    {
+        profileForm = new ProfileForm
+        {
+            FullName = AuthService.CurrentUser?.FullName ?? "",
+            Email    = AuthService.CurrentUser?.Email ?? "",
+            Phone    = "+92 300 1234567",
+            City     = "Rawalpindi",
+            Address  = "House 12, Street 5, Satellite Town, Rawalpindi"
+        };
+    }
+
+    private async Task SaveProfile()
+    {
+        profileSaved = true;
+        await Task.Delay(3000);
+        profileSaved = false;
+        StateHasChanged();
+    }
+
+    private void ResetProfile()
+    {
+        profileForm.FullName = AuthService.CurrentUser?.FullName ?? "";
+        profileForm.Email    = AuthService.CurrentUser?.Email ?? "";
+    }
+
+    private void ChangePassword()
+    {
+        passwordError = "";
+        if (string.IsNullOrWhiteSpace(secForm.OldPassword)) { passwordError = "Current password required hai."; return; }
+        if (secForm.NewPassword.Length < 6) { passwordError = "New password 6 characters se zyada hona chahiye."; return; }
+        if (secForm.NewPassword != secForm.ConfirmPassword) { passwordError = "Passwords match nahi kar rahe."; return; }
+        secForm = new();
+        showPasswordSection = false;
+    }
+
+    private void RevokeSession(SessionItem s) => activeSessions.Remove(s);
+    private void SaveAppearance() { /* TODO: persist */ }
+
+    private async Task DeleteAccount()
+    {
+        if (deleteConfirmText != "DELETE") return;
+        AuthService.Logout();
+        await LocalStorage.DeleteAsync("userId");
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}
+
+
+
+<style>
+/* ── LAYOUT ── */
+.settings-layout {
+    display: grid; grid-template-columns: 260px 1fr; gap: 30px; align-items: start; margin-top: 20px; margin-bottom: 50px;
+}
+
+/* ── SIDEBAR TABS ── */
+.settings-sidebar {
+    background: var(--surface); border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 8px;
+    position: sticky; top: 100px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.stab {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px;
+    background: transparent; border: none; color: #a0a3bd;
+    cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: all 0.3s ease;
+    text-align: left; width: 100%;
+}
+.stab:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.stab.active { background: linear-gradient(135deg, rgba(91,141,238,0.2), rgba(123,47,247,0.2)); color: #5b8dee; border-left: 3px solid #5b8dee; }
+.stab-icon { font-size: 1.2rem; width: 24px; text-align: center; }
+.stab span:last-of-type { flex: 1; }
+.stab-badge {
+    background: #5b8dee; color: var(--text);
+    font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; margin-left: auto;
+}
+
+/* ── CONTENT ── */
+.settings-section {
+    background: var(--surface); border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.ss-header {
+    padding: 30px; border-bottom: 1px solid rgba(0,0,0,0.05); background: linear-gradient(180deg, rgba(0,0,0,0.03) 0%, transparent 100%);
+}
+.ss-header h3 {
+    font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800;
+    color: var(--text); display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.ss-header p { font-size: 0.9rem; color: #8a8d9e; margin: 0; }
+.ss-sub-header { padding: 25px 30px 10px; }
+.ss-sub-header h4 { font-size: 0.85rem; font-weight: 700; color: #6c7293; letter-spacing: 1px; text-transform: uppercase; }
+
+/* ── PROFILE AVATAR ── */
+.profile-avatar-section {
+    display: flex; align-items: center; gap: 25px;
+    padding: 30px; border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.pa-avatar-big {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: linear-gradient(135deg, #5b8dee, #7b2ff7);
+    display: grid; place-items: center;
+    font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800;
+    color: var(--text); flex-shrink: 0; border: 4px solid rgba(91,141,238,0.2); box-shadow: 0 10px 20px rgba(91,141,238,0.3);
+}
+.pa-info { display: flex; flex-direction: column; gap: 6px; }
+.pa-info strong { font-size: 1.3rem; font-weight: 800; color: var(--text); }
+.pa-info span { font-size: 0.9rem; color: #8a8d9e; margin-bottom: 10px; }
+
+/* ── FORM GRID ── */
+.settings-form-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    padding: 30px;
+}
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-label { font-size: 0.85rem; font-weight: 600; color: #a0a3bd; letter-spacing: 0.5px; }
+.form-control { background: rgba(0,0,0,0.2) !important; border: 1px solid rgba(0,0,0,0.1) !important; border-radius: 12px !important; color: var(--text) !important; padding: 12px 16px !important; font-size: 0.95rem !important; transition: all 0.3s !important; }
+.form-control:focus { border-color: #5b8dee !important; box-shadow: 0 0 0 4px rgba(91,141,238,0.15) !important; outline: none !important; background: rgba(15,23,41,0.8) !important; }
+
+.settings-form-actions {
+    display: flex; justify-content: flex-end; gap: 15px;
+    padding: 20px 30px; border-top: 1px solid rgba(0,0,0,0.05); background: rgba(0,0,0,0.1);
+}
+
+/* ── BUTTONS ── */
+.btn { padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; transition: all 0.3s; cursor: pointer; border: none; }
+.btn-primary { background: linear-gradient(135deg, #5b8dee, #7b2ff7); color: var(--text); box-shadow: 0 4px 15px rgba(91,141,238,0.3); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(91,141,238,0.4); }
+.btn-ghost { background: rgba(0,0,0,0.05); color: var(--text); }
+.btn-ghost:hover { background: rgba(0,0,0,0.1); }
+.btn-danger { background: rgba(230,57,70,0.1); color: #e63946; border: 1px solid rgba(230,57,70,0.3); }
+.btn-danger:hover { background: rgba(230,57,70,0.2); transform: translateY(-2px); }
+.btn-sm { padding: 8px 16px; font-size: 0.85rem; }
+
+/* ── SETTINGS CARD ── */
+.settings-card {
+    display: flex; align-items: center; gap: 20px;
+    padding: 20px 30px; border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: all 0.3s;
+}
+.settings-card:last-child { border-bottom: none; }
+.settings-card:hover { background: rgba(0,0,0,0.02); }
+.sc-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: grid; place-items: center; font-size: 1.3rem; flex-shrink: 0;
+}
+.sc-icon.blue  { background: rgba(91,141,238,0.15); color: #5b8dee; }
+.sc-icon.pink  { background: rgba(240,98,146,0.15); color: #f06292; }
+.sc-icon.green { background: rgba(46,196,182,0.15); color: #2ec4b6; }
+.sc-icon.gold  { background: rgba(244,162,97,0.15); color: #f4a261; }
+.sc-info { flex: 1; min-width: 0; }
+.sc-info strong { display: block; font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+.sc-info span   { font-size: 0.85rem; color: #8a8d9e; }
+
+/* ── TOGGLE SWITCH ── */
+.settings-toggle {
+    width: 50px; height: 28px; border-radius: 30px;
+    background: rgba(0,0,0,0.1); cursor: pointer; position: relative;
+    transition: all 0.3s ease; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.05);
+}
+.settings-toggle.on { background: #5b8dee; border-color: #5b8dee; }
+.toggle-thumb {
+    position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+.settings-toggle.on .toggle-thumb { transform: translateX(22px); }
+
+/* ── THEME PICKER ── */
+.theme-picker { display: flex; gap: 15px; padding: 0 30px 20px; flex-wrap: wrap; }
+.theme-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 20px 30px; background: rgba(0,0,0,0.2); border: 2px solid rgba(0,0,0,0.05);
+    border-radius: 16px; cursor: pointer; color: #8a8d9e;
+    font-size: 0.9rem; font-weight: 600; transition: all 0.3s; min-width: 100px;
+}
+.theme-btn i { font-size: 1.8rem; }
+.theme-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+.theme-btn.active { border-color: #5b8dee; color: #5b8dee; background: rgba(91,141,238,0.1); box-shadow: 0 4px 15px rgba(91,141,238,0.2); }
+
+/* ── NOTIFICATION GROUPS ── */
+.ng-header { padding: 25px 30px 10px; font-size: 0.85rem; font-weight: 700; color: #6c7293; letter-spacing: 1px; text-transform: uppercase; }
+
+/* ── DANGER ZONE ── */
+.danger-zone {
+    margin: 30px; border: 1px solid rgba(230,57,70,0.3);
+    border-radius: 16px; overflow: hidden;
+}
+.dz-header {
+    background: rgba(230,57,70,0.08); padding: 15px 25px;
+    font-size: 0.9rem; font-weight: 700; color: #e63946;
+    display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;
+}
+.dz-card { border-bottom: none !important; }
+.dz-confirm {
+    margin: 0 30px 30px; background: rgba(230,57,70,0.05);
+    border: 1px solid rgba(230,57,70,0.2); border-radius: 16px;
+    padding: 25px; display: flex; flex-direction: column; gap: 15px;
+}
+.dz-confirm p { font-size: 0.9rem; color: #d0d2e0; margin: 0; }
+
+/* ── ALERTS ── */
+.alert-success-toast { margin: 0 30px 20px; background: rgba(46,196,182,0.1); border: 1px solid rgba(46,196,182,0.3); color: #2ec4b6; border-radius: 12px; padding: 15px 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+.alert-error-toast { margin: 0 30px 20px; background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: #e63946; border-radius: 12px; padding: 15px 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; }
+
+/* ── ACCENT COLOR ── */
+.accent-picker { display: flex; gap: 15px; padding: 0 30px 30px; flex-wrap: wrap; }
+.accent-btn { width: 44px; height: 44px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; display: grid; place-items: center; color: var(--text); font-size: 1.1rem; transition: all 0.3s; }
+.accent-btn.active { border-color: var(--text); box-shadow: 0 0 0 3px rgba(0,0,0,0.2); }
+.accent-btn:hover { transform: scale(1.1); }
+
+/* ── RESPONSIVE ── */
+@@media (max-width: 768px) {
+    .settings-layout { grid-template-columns: 1fr; }
+    .settings-sidebar { flex-direction: row; flex-wrap: wrap; position: static; }
+    .stab { flex: 1; justify-content: center; min-width: 120px; text-align: center; flex-direction: column; gap: 6px; padding: 15px; }
+    .stab-icon { width: auto; font-size: 1.5rem; }
+    .settings-form-grid { grid-template-columns: 1fr; }
+}
+
+</style>

@@ -1,0 +1,570 @@
+@page "/orders"
+@using Microsoft.EntityFrameworkCore
+@using ShopWaveBlazor.Web.ECommerceAPI.Models
+@using ShopWaveBlazor.Web.Services
+@inject ShopWaveBlazor.Web.Services.OrderService OrderService
+@inject ShopWaveBlazor.Web.Services.AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>ShopWave — My Orders</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>My Orders</h2>
+        <div class="breadcrumb">Home <i class="bi bi-chevron-right"></i> <span>Orders</span></div>
+    </div>
+    <button class="btn btn-primary btn-sm" @onclick='() => Navigation.NavigateTo("/")' aria-label="Shop More">
+        <i class="bi bi-bag-plus"></i> Shop More
+    </button>
+</div>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="empty-state card">
+        <div class="empty-icon" style="font-size:4rem;">🔐</div>
+        <h4>Please Login</h4>
+        <p>You need to be logged in to view your orders.</p>
+        <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/login")'>
+            <i class="bi bi-box-arrow-in-right"></i> Login Now
+        </button>
+    </div>
+}
+else
+{
+    <!-- STATS ROW -->
+    <div class="order-stats-row">
+        <div class="order-stat-card">
+            <div class="osc-icon blue"><i class="bi bi-bag-check"></i></div>
+            <div class="osc-info">
+                <span class="osc-val">@orders.Count</span>
+                <span class="osc-label">Total Orders</span>
+            </div>
+        </div>
+        <div class="order-stat-card">
+            <div class="osc-icon green"><i class="bi bi-check2-circle"></i></div>
+            <div class="osc-info">
+                <span class="osc-val">@orders.Count(o => o.OrderStatus == "Delivered")</span>
+                <span class="osc-label">Delivered</span>
+            </div>
+        </div>
+        <div class="order-stat-card">
+            <div class="osc-icon gold"><i class="bi bi-truck"></i></div>
+            <div class="osc-info">
+                <span class="osc-val">@orders.Count(o => o.OrderStatus == "Shipped")</span>
+                <span class="osc-label">In Transit</span>
+            </div>
+        </div>
+        <div class="order-stat-card">
+            <div class="osc-icon pink"><i class="bi bi-clock-history"></i></div>
+            <div class="osc-info">
+                <span class="osc-val">@orders.Count(o => o.OrderStatus == "Pending")</span>
+                <span class="osc-label">Pending</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER TABS + SEARCH -->
+    <div class="orders-toolbar">
+        <div class="order-tabs">
+            @foreach (var tab in tabs)
+            {
+                <button class="order-tab @(activeTab == tab ? "active" : "")"
+                        @onclick="() => activeTab = tab">
+                    @tab
+                    <span class="tab-count">@(tab == "All" ? orders.Count : orders.Count(o => o.OrderStatus == tab))</span>
+                </button>
+            }
+        </div>
+        <div class="orders-search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="Search order ID or items..." @bind="searchQuery" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <!-- ORDERS LIST -->
+    @if (!filteredOrders.Any())
+    {
+        <div class="empty-state card" style="margin-top:20px;">
+            <div class="empty-icon" style="font-size:4rem;">📦</div>
+            <h4>Koi order nahi mila</h4>
+            <p>@(activeTab == "All" ? "Abhi tak koi order nahi kiya." : $"Koi {activeTab} order nahi hai.")</p>
+            <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/")'>
+                <i class="bi bi-bag-heart"></i> Start Shopping
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="orders-list">
+            @foreach (var order in filteredOrders)
+            {
+                <div class="order-card @(expandedOrder == order.OrderID ? "expanded" : "")">
+
+                    <!-- ORDER CARD HEADER -->
+                    <div class="order-card-header" @onclick="() => ToggleOrder(order.OrderID)">
+                        <div class="order-header-left">
+                            <div class="order-id-badge">
+                                <i class="bi bi-hash"></i>@order.OrderID.ToString("D5")
+                            </div>
+                            <div class="order-header-info">
+                                <span class="order-date">
+                                    <i class="bi bi-calendar3"></i>
+                                    @order.OrderDate.ToString("dd MMM yyyy")
+                                </span>
+                                <span class="order-items-hint">
+                                    @order.OrderDetails?.Count item@(order.OrderDetails?.Count != 1 ? "s" : "")
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="order-header-center d-none d-md-block">
+                            <!-- PRODUCT THUMBNAILS -->
+                            <div class="order-thumbs">
+                                @if (order.OrderDetails != null)
+                                {
+                                    @foreach (var detail in order.OrderDetails.Take(3))
+                                    {
+                                        <div class="order-thumb">
+                                            <img src="@ProductImageService.GetImage(detail.Product?.ProductName, detail.Product?.Category?.CategoryName)"
+                                                 alt="@detail.Product?.ProductName"
+                                                 onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=80&q=80'" />
+                                        </div>
+                                    }
+                                    @if (order.OrderDetails.Count > 3)
+                                    {
+                                        <div class="order-thumb more-thumb">
+                                            +@(order.OrderDetails.Count - 3)
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        <div class="order-header-right">
+                            <div class="order-total-wrap">
+                                <span class="order-total-label">Total</span>
+                                <span class="order-total-val">Rs. @order.TotalAmount.ToString("N0")</span>
+                            </div>
+                            <span class="badge @GetStatusBadge(order.OrderStatus)">
+                                @GetStatusIcon(order.OrderStatus) @order.OrderStatus
+                            </span>
+                            <i class="bi bi-chevron-down expand-icon @(expandedOrder == order.OrderID ? "rotated" : "")"></i>
+                        </div>
+                    </div>
+
+                    <!-- EXPANDED DETAIL -->
+                    @if (expandedOrder == order.OrderID)
+                    {
+                        <div class="order-detail-panel">
+
+                            <!-- STATUS TIMELINE -->
+                            <div class="timeline-section">
+                                <h6 class="section-mini-title">
+                                    <i class="bi bi-map"></i> Order Journey
+                                </h6>
+                                <div class="order-timeline">
+                                    @foreach (var step in GetTimeline(order.OrderStatus))
+                                    {
+                                        <div class="timeline-step @(step.Done ? "done" : "") @(step.Active ? "active" : "")">
+                                            <div class="tl-dot">
+                                                @if (step.Done)
+                                                {
+                                                    <i class="bi bi-check-lg"></i>
+                                                }
+                                                else if (step.Active)
+                                                {
+                                                    <div class="tl-pulse"></div>
+                                                }
+                                            </div>
+                                            <div class="tl-connector @(step.Done ? "done" : "")"></div>
+                                            <div class="tl-info">
+                                                <span class="tl-label">@step.Label</span>
+                                                <span class="tl-date">@step.Date</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- ORDERED ITEMS -->
+                            <div class="ordered-items-section">
+                                <h6 class="section-mini-title">
+                                    <i class="bi bi-box"></i> Items Ordered
+                                </h6>
+                                @if (order.OrderDetails != null)
+                                {
+                                    @foreach (var detail in order.OrderDetails)
+                                    {
+                                        <div class="ordered-item">
+                                            <div class="oi-img">
+                                                <img src="@ProductImageService.GetImage(detail.Product?.ProductName, detail.Product?.Category?.CategoryName)"
+                                                     alt="@detail.Product?.ProductName"
+                                                     onerror="this.src='https://images.unsplash.com/photo-1560472355-536de3962603?w=80&q=80'" />
+                                            </div>
+                                            <div class="oi-info">
+                                                <span class="oi-cat">@detail.Product?.Category?.CategoryName</span>
+                                                <strong class="oi-name">@detail.Product?.ProductName</strong>
+                                                <span class="oi-qty">Qty: @detail.Quantity</span>
+                                            </div>
+                                            <div class="oi-price">
+                                                Rs. @((detail.Product?.Price * detail.Quantity)?.ToString("N0"))
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <!-- ORDER FOOTER ACTIONS -->
+                            <div class="order-detail-footer">
+                                <div class="order-summary-mini">
+                                    <div class="osm-row">
+                                        <span>Subtotal</span>
+                                        <span>Rs. @order.TotalAmount.ToString("N0")</span>
+                                    </div>
+                                    <div class="osm-row">
+                                        <span>Shipping</span>
+                                        <span class="text-success">Free</span>
+                                    </div>
+                                    <div class="osm-row total">
+                                        <span>Total Paid</span>
+                                        <span>Rs. @order.TotalAmount.ToString("N0")</span>
+                                    </div>
+                                </div>
+
+                                <div class="order-actions">
+                                    @if (order.OrderStatus == "Delivered")
+                                    {
+                                        <button class="btn btn-outline btn-sm" aria-label="Write Review">
+                                            <i class="bi bi-star"></i> Write Review
+                                        </button>
+                                        <button class="btn btn-secondary btn-sm" aria-label="Buy Again">
+                                            <i class="bi bi-arrow-repeat"></i> Buy Again
+                                        </button>
+                                    }
+                                    @if (order.OrderStatus == "Pending")
+                                    {
+                                        <button class="btn btn-danger btn-sm" aria-label="Cancel Order">
+                                            <i class="bi bi-x-circle"></i> Cancel Order
+                                        </button>
+                                    }
+                                    @if (order.OrderStatus == "Shipped")
+                                    {
+                                        <button class="btn btn-outline btn-sm" aria-label="Track Order">
+                                            <i class="bi bi-geo-alt"></i> Track Order
+                                        </button>
+                                    }
+                                    <button class="btn btn-ghost btn-sm" aria-label="Download Invoice" @onclick="() => DownloadInvoice(order)">
+                                        <i class="bi bi-file-earmark-pdf"></i> Download Invoice
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- HIDDEN INVOICE TEMPLATE (Only for PDF Generation) -->
+                <div id="invoice-@order.OrderID" style="display:none; padding:40px; color:#000; background:#fff; font-family: 'Poppins', sans-serif;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #5b8dee; padding-bottom:20px; margin-bottom:30px;">
+                        <div>
+                            <h1 style="color:#5b8dee; margin:0; font-weight:800;">ShopWave</h1>
+                            <p style="color:#666; margin:0;">Premium E-Commerce Experience</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <h2 style="margin:0;">INVOICE</h2>
+                            <p style="margin:0; font-weight:700;">#SW-@order.OrderID.ToString("D5")</p>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-bottom:40px;">
+                        <div>
+                            <h4 style="border-bottom:1px solid #ddd; padding-bottom:5px;">Bill To:</h4>
+                            <strong>@AuthService.CurrentUser?.FullName</strong><br/>
+                            @order.ShippingAddress<br/>
+                            Phone: @order.PhoneNumber
+                        </div>
+                        <div style="text-align:right;">
+                            <h4 style="border-bottom:1px solid #ddd; padding-bottom:5px;">Order Details:</h4>
+                            Date: @order.OrderDate.ToString("dd MMM yyyy")<br/>
+                            Payment: @order.OrderDetails?.FirstOrDefault()?.Product?.Price.ToString("N0") (COD/Online)<br/>
+                            Status: @order.OrderStatus
+                        </div>
+                    </div>
+
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:30px;">
+                        <thead style="background:#f4f7ff;">
+                            <tr>
+                                <th style="padding:12px; border-bottom:2px solid #5b8dee; text-align:left;">Item Name</th>
+                                <th style="padding:12px; border-bottom:2px solid #5b8dee; text-align:center;">Qty</th>
+                                <th style="padding:12px; border-bottom:2px solid #5b8dee; text-align:right;">Price</th>
+                                <th style="padding:12px; border-bottom:2px solid #5b8dee; text-align:right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var detail in order.OrderDetails ?? new List<OrderDetail>())
+                            {
+                                <tr style="border-bottom:1px solid #eee;">
+                                    <td style="padding:12px;">@detail.Product?.ProductName</td>
+                                    <td style="padding:12px; text-align:center;">@detail.Quantity</td>
+                                    <td style="padding:12px; text-align:right;">Rs. @detail.UnitPrice.ToString("N0")</td>
+                                    <td style="padding:12px; text-align:right;">Rs. @((detail.UnitPrice * detail.Quantity).ToString("N0"))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div style="margin-left:auto; width:250px;">
+                        <div style="display:flex; justify-content:space-between; padding:5px 0;">
+                            <span>Subtotal:</span>
+                            <span>Rs. @order.TotalAmount.ToString("N0")</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:5px 0;">
+                            <span>Shipping:</span>
+                            <span style="color:green;">FREE</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:10px 0; border-top:2px solid #5b8dee; font-weight:800; font-size:1.2rem; color:#5b8dee; margin-top:10px;">
+                            <span>Grand Total:</span>
+                            <span>Rs. @order.TotalAmount.ToString("N0")</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:60px; text-align:center; border-top:1px solid #eee; padding-top:20px; color:#888; font-size:.8rem;">
+                        <p>Thank you for shopping with ShopWave! This is a computer generated invoice.</p>
+                        <p>www.shopwave.com.pk | Support: +92 300 0000000</p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    private List<Order> orders = new();
+    private string activeTab    = "All";
+    private string searchQuery  = "";
+    private int?   expandedOrder = null;
+
+    private string[] tabs = { "All", "Pending", "Shipped", "Delivered", "Cancelled" };
+
+    private IEnumerable<Order> filteredOrders =>
+        orders.Where(o =>
+            (activeTab == "All" || o.OrderStatus == activeTab) &&
+            (string.IsNullOrEmpty(searchQuery) ||
+             o.OrderID.ToString().Contains(searchQuery) ||
+             (o.OrderDetails?.Any(d => d.Product?.ProductName
+                 .Contains(searchQuery, StringComparison.OrdinalIgnoreCase) == true) ?? false)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated && AuthService.CurrentUser != null)
+        {
+            orders = await OrderService.GetUserOrdersAsync(AuthService.CurrentUser.UserID);
+
+            // Demo statuses agar DB mein nahi hain (Optional for testing)
+            var statuses = new[] { "Delivered", "Shipped", "Pending", "Delivered", "Cancelled" };
+            for (int i = 0; i < orders.Count; i++)
+                if (string.IsNullOrEmpty(orders[i].OrderStatus) || orders[i].OrderStatus == "Pending")
+                    orders[i].OrderStatus = statuses[i % statuses.Length];
+        }
+    }
+
+    private void ToggleOrder(int id) =>
+        expandedOrder = expandedOrder == id ? null : id;
+
+    private async Task DownloadInvoice(Order order)
+    {
+        var elementId = $"invoice-{order.OrderID}";
+        var filename = $"Invoice_ShopWave_{order.OrderID:D5}.pdf";
+        
+        // Temporarily show the element so JS can capture it
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{elementId}').style.display = 'block'");
+        
+        await JSRuntime.InvokeVoidAsync("generatePDF", elementId, filename);
+        
+        // Hide it back
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{elementId}').style.display = 'none'");
+    }
+
+    private string GetStatusBadge(string? status) => status switch
+    {
+        "Delivered"  => "badge-success",
+        "Shipped"    => "badge-info",
+        "Pending"    => "badge-warning",
+        "Cancelled"  => "badge-danger",
+        _            => "badge-muted"
+    };
+
+    private string GetStatusIcon(string? status) => status switch
+    {
+        "Delivered"  => "✅",
+        "Shipped"    => "🚚",
+        "Pending"    => "⏳",
+        "Cancelled"  => "❌",
+        _            => "📦"
+    };
+
+    private record TimelineStep(string Label, string Date, bool Done, bool Active);
+
+    private List<TimelineStep> GetTimeline(string? status) => status switch
+    {
+        "Delivered" => new()
+        {
+            new("Order Placed",      "Apr 20, 2025 · 10:30 AM", true,  false),
+            new("Payment Confirmed", "Apr 20, 2025 · 10:35 AM", true,  false),
+            new("Packed & Shipped",  "Apr 21, 2025 · 02:00 PM", true,  false),
+            new("Out for Delivery",  "Apr 24, 2025 · 09:00 AM", true,  false),
+            new("Delivered",         "Apr 24, 2025 · 04:15 PM", true,  false),
+        },
+        "Shipped" => new()
+        {
+            new("Order Placed",      "Apr 28, 2025 · 11:00 AM", true,  false),
+            new("Payment Confirmed", "Apr 28, 2025 · 11:05 AM", true,  false),
+            new("Packed & Shipped",  "Apr 29, 2025 · 03:00 PM", true,  false),
+            new("Out for Delivery",  "Expected May 2, 2025",    false, true),
+            new("Delivered",         "Expected May 3, 2025",    false, false),
+        },
+        "Pending" => new()
+        {
+            new("Order Placed",      "May 1, 2025 · 08:45 AM",  true,  false),
+            new("Payment Confirmed", "Awaiting confirmation...", false, true),
+            new("Packed & Shipped",  "Pending",                 false, false),
+            new("Out for Delivery",  "Pending",                 false, false),
+            new("Delivered",         "Pending",                 false, false),
+        },
+        _ => new()
+        {
+            new("Order Placed",     "—", true,  false),
+            new("Order Cancelled",  "—", true,  false),
+        }
+    };
+}
+
+<style>
+    /* ── STATS ROW ── */
+    .order-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+    .order-stat-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 18px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .order-stat-card:hover { border-color: rgba(0,0,0,0.15); transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+    .osc-icon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; font-size: 1.4rem; flex-shrink: 0; }
+    .osc-icon.blue  { background: rgba(91,141,238,.12);  color: var(--primary);   }
+    .osc-icon.green { background: rgba(46,196,182,.12);  color: #2ec4b6;   }
+    .osc-icon.gold  { background: rgba(244,162,97,.12);  color: #f4a261;      }
+    .osc-icon.pink  { background: rgba(240,98,146,.12);  color: #f06292; }
+    .osc-val { display: block; font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 4px; }
+    .osc-label { font-size: .8rem; color: #8a8d9e; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── TOOLBAR & TABS ── */
+    .orders-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+    .order-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+    .order-tab { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.08); color: #6B7280; padding: 8px 18px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .order-tab:hover { background: rgba(0,0,0,0.03); color: #111018; }
+    .order-tab.active { background: #111018; color: #FFFFFF; border-color: #111018; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    .tab-count { background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; color: inherit; }
+
+    /* ── SEARCH BOX ── */
+    .orders-search-box { position: relative; display: flex; align-items: center; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.1); border-radius: 30px; padding: 0 20px; width: 320px; transition: all 0.3s; height: 42px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02); }
+    .orders-search-box:focus-within { border-color: #111018; box-shadow: 0 0 0 3px rgba(0,0,0,0.05); background: #FFFFFF; }
+    .orders-search-box i { color: #8a8d9e; font-size: 1rem; margin-right: 12px; }
+    .orders-search-box input { background: transparent; border: none; color: #111018; width: 100%; outline: none; font-size: .9rem; height: 100%; }
+    .orders-search-box input::placeholder { color: #8a8d9e; }
+
+    /* ── ORDERS LIST ── */
+    .orders-list { display: flex; flex-direction: column; gap: 20px; }
+    .order-card { background: var(--surface); border: 1px solid rgba(0,0,0,0.06); border-radius: 20px; overflow: hidden; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .order-card:hover { border-color: rgba(0,0,0,0.15); }
+    .order-card.expanded { border-color: rgba(91,141,238,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+
+    /* ── CARD HEADER ── */
+    .order-card-header { padding: 20px 25px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: linear-gradient(180deg, rgba(0,0,0,0.03) 0%, transparent 100%); }
+    .order-header-left { display: flex; flex-direction: column; gap: 8px; min-width: 180px; }
+    .order-id-badge { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 4px; }
+    .order-id-badge i { color: var(--primary); font-size: 1.2rem; }
+    .order-header-info { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: #8a8d9e; }
+    .order-date i { margin-right: 5px; }
+    .order-items-hint { background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 6px; font-weight: 600; color: #a0a3bd; }
+
+    .order-header-center { flex: 1; display: flex; justify-content: center; }
+    .order-thumbs { display: flex; align-items: center; gap: -10px; }
+    .order-thumb { width: 42px; height: 42px; border-radius: 50%; border: 2px solid #0f1729; overflow: hidden; background: #161c2d; margin-left: -12px; transition: transform 0.2s; }
+    .order-thumb:first-child { margin-left: 0; }
+    .order-thumb:hover { transform: translateY(-3px) scale(1.1); z-index: 10; }
+    .order-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .more-thumb { display: grid; place-items: center; background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.8rem; font-weight: 700; }
+
+    .order-header-right { display: flex; align-items: center; gap: 20px; }
+    .order-total-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+    .order-total-label { font-size: 0.75rem; color: #8a8d9e; text-transform: uppercase; letter-spacing: 0.5px; }
+    .order-total-val { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    
+    .badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 5px; letter-spacing: 0.5px; }
+    .badge-success { background: rgba(46,196,182,0.15); color: #2ec4b6; border: 1px solid rgba(46,196,182,0.3); }
+    .badge-info { background: rgba(91,141,238,0.15); color: #5b8dee; border: 1px solid rgba(91,141,238,0.3); }
+    .badge-warning { background: rgba(244,162,97,0.15); color: #f4a261; border: 1px solid rgba(244,162,97,0.3); }
+    .badge-danger { background: rgba(230,57,70,0.15); color: #e63946; border: 1px solid rgba(230,57,70,0.3); }
+
+    .expand-icon { font-size: 1.2rem; color: #8a8d9e; transition: transform 0.3s ease; }
+    .expand-icon.rotated { transform: rotate(180deg); color: var(--primary); }
+
+    /* ── EXPANDED DETAIL PANEL ── */
+    .order-detail-panel { border-top: 1px solid rgba(0,0,0,0.05); background: rgba(0,0,0,0.15); padding: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    
+    .section-mini-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .section-mini-title i { color: var(--primary); font-size: 1.2rem; }
+
+    /* ── TIMELINE ── */
+    .order-timeline { display: flex; flex-direction: column; gap: 15px; position: relative; }
+    .timeline-step { display: flex; gap: 15px; position: relative; }
+    .tl-dot { width: 24px; height: 24px; border-radius: 50%; background: #2a2d3e; border: 2px solid #3f435a; display: grid; place-items: center; flex-shrink: 0; z-index: 2; color: transparent; transition: all 0.3s; }
+    .timeline-step.done .tl-dot { background: #2ec4b6; border-color: #2ec4b6; color: var(--text); font-size: 0.8rem; }
+    .timeline-step.active .tl-dot { border-color: var(--primary); background: var(--surface); }
+    .tl-pulse { width: 10px; height: 10px; background: var(--primary); border-radius: 50%; animation: tlPulse 1.5s infinite; }
+    @@keyframes tlPulse { 0% { box-shadow: 0 0 0 0 rgba(91,141,238,0.6); } 70% { box-shadow: 0 0 0 10px rgba(91,141,238,0); } 100% { box-shadow: 0 0 0 0 rgba(91,141,238,0); } }
+    
+    .tl-connector { position: absolute; left: 11px; top: 24px; bottom: -15px; width: 2px; background: #2a2d3e; z-index: 1; }
+    .timeline-step:last-child .tl-connector { display: none; }
+    .tl-connector.done { background: #2ec4b6; }
+    
+    .tl-info { padding-bottom: 10px; display: flex; flex-direction: column; }
+    .tl-label { font-weight: 600; color: #a0a3bd; font-size: 0.95rem; }
+    .timeline-step.done .tl-label, .timeline-step.active .tl-label { color: var(--text); }
+    .tl-date { font-size: 0.8rem; color: #6c7293; margin-top: 4px; }
+
+    /* ── ORDERED ITEMS ── */
+    .ordered-items-section { display: flex; flex-direction: column; gap: 12px; }
+    .ordered-item { display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.05); padding: 12px; border-radius: 12px; transition: background 0.3s; }
+    .ordered-item:hover { background: rgba(0,0,0,0.06); }
+    .oi-img { width: 60px; height: 60px; border-radius: 10px; overflow: hidden; background: #07080f; flex-shrink: 0; }
+    .oi-img img { width: 100%; height: 100%; object-fit: cover; }
+    .oi-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .oi-cat { font-size: 0.7rem; color: var(--primary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+    .oi-name { font-size: 0.95rem; color: var(--text); font-weight: 600; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .oi-qty { font-size: 0.8rem; color: #8a8d9e; }
+    .oi-price { font-weight: 700; color: var(--text); font-size: 1rem; }
+
+    /* ── DETAIL FOOTER ── */
+    .order-detail-footer { grid-column: 1 / -1; margin-top: 10px; padding-top: 20px; border-top: 1px dashed rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px; }
+    
+    .order-summary-mini { min-width: 250px; background: rgba(0,0,0,0.02); padding: 15px 20px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); }
+    .osm-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #a0a3bd; }
+    .osm-row.total { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1); color: var(--text); font-weight: 700; font-size: 1.1rem; margin-bottom: 0; }
+    
+    .order-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .order-actions .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: all 0.3s; }
+    .btn-outline { background: transparent; border: 1px solid rgba(0,0,0,0.2); color: var(--text); }
+    .btn-outline:hover { background: rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.4); }
+    .btn-ghost { background: rgba(91,141,238,0.1); color: var(--primary); border: none; }
+    .btn-ghost:hover { background: rgba(91,141,238,0.2); transform: translateY(-2px); }
+
+    /* ── RESPONSIVE ── */
+    @@media (max-width: 992px) {
+        .order-detail-panel { grid-template-columns: 1fr; gap: 30px; }
+        .order-detail-footer { flex-direction: column; align-items: stretch; }
+    }
+    @@media (max-width: 768px) {
+        .order-stats-row { grid-template-columns: 1fr 1fr; }
+        .orders-toolbar { flex-direction: column; align-items: stretch; }
+        .orders-search-box { width: 100%; }
+        .order-header-left { min-width: auto; }
+        .order-header-right { flex-direction: column; align-items: flex-end; gap: 10px; }
+    }
+</style>
+
