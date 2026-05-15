@@ -37,7 +37,7 @@ ShopWaveBlazor/
 └── appsettings.json   # Configuration Settings
 🗄️ Database
 
-All data is stored in SQL Server (SSMS), including:
+All data is stored in SQL Server (SSMS):
 
 Users & Authentication Data
 Products & Categories
@@ -50,30 +50,30 @@ git clone https://github.com/SaadKhawer/Enterprise-Commerce-Platform.git
 cd Enterprise-Commerce-Platform
 2. Open Project
 
-Open the solution in Visual Studio.
+Open the solution in Visual Studio
 
 3. Configure Database
 
-Update connection string inside:
+Update connection string in:
 
 appsettings.json
 4. Run Database Scripts
 
-Execute SQL scripts located in:
+Execute SQL scripts from:
 
 /Database
 
-using SQL Server Management Studio (SSMS).
+using SSMS
 
 5. Run Application
 dotnet run
 🚀 Future Improvements
-💳 Payment Gateway Integration (Stripe / PayPal)
-📧 Email Notifications System
-📊 Advanced Admin Analytics Dashboard
+💳 Payment Gateway Integration
+📧 Email Notifications
+📊 Admin Analytics Dashboard
 🔐 Role-Based Access Control (RBAC)
 ☁️ Cloud Deployment (Azure / AWS)
-📱 Mobile Responsive UI Improvements
+📱 Mobile Responsive UI
 👨‍💻 Author
 
 Saad
@@ -86,3 +86,7 @@ Passionate about building scalable real-world applications.
 ✔ Database Integration Done
 ✔ API Layer Implemented
 🔄 Continuous Improvements in Progress
+
+💡 Note
+
+This project is built for learning and portfolio purposes, showcasing modern full-stack development using the .NET ecosystem.
