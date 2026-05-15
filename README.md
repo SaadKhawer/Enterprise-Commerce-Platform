@@ -1,22 +1,21 @@
-
 🛒 Enterprise Commerce Platform
 
-A full-stack E-Commerce Web Application built using Blazor (.NET) with a modular architecture integrating frontend, backend APIs, and SQL Server database. This project demonstrates a real-world implementation of an online shopping system with complete CRUD operations, authentication, and order processing workflow.
+A full-stack E-Commerce Web Application built using Blazor (.NET). This project demonstrates a complete online shopping system with frontend, backend APIs, and SQL Server database integration.
 
 📌 Overview
 
-The Enterprise Commerce Platform is designed to simulate a modern e-commerce system where users can browse products, manage carts, place orders, and track activities. It follows a layered architecture with separation of concerns between UI, business logic, and data access.
+Enterprise Commerce Platform is a real-world e-commerce system where users can browse products, manage shopping carts, place orders, and track purchases. The system follows a layered architecture with clear separation between UI, services, API, and database layers.
 
-🚀 Key Features
-🔐 User Authentication & Authorization
-🛍️ Product Catalog Management
-🛒 Shopping Cart Functionality
+🚀 Features
+🔐 User Authentication (Login / Register)
+🛍️ Product Listing & Product Details
+🛒 Shopping Cart System
 📦 Order Placement & Tracking
 👤 Customer Profile Management
 ⭐ Product Reviews & Ratings
 🔔 Notification System
-📊 Admin Dashboard for Management
-🔎 Search and Filtering System
+📊 Admin Dashboard
+🔎 Search & Filtering System
 🧠 Tech Stack
 
 Frontend:
@@ -35,68 +34,56 @@ Database:
 
 Microsoft SQL Server (SSMS)
 Entity Framework Core
+🗄️ Database
 
-Architecture:
+All data is stored in SQL Server:
 
-Layered Architecture (UI + Services + API + Database)
-🗄️ Database Design
-
-The system uses SQL Server for persistent storage, managing:
-
-Users & Authentication Data
+Users & Authentication
 Products & Categories
-Orders & Cart Items
+Orders & Cart Data
 Reviews & Ratings
 Notifications
 📁 Project Structure
 ShopWaveBlazor/
 │
-├── Components/        # UI Components (Blazor)
-├── Services/          # Business Logic Layer
-├── ECommerceAPI/      # REST API Controllers
-├── Database/          # SQL Scripts (SSMS)
-├── wwwroot/           # Static Assets (CSS/JS/Images)
-├── Program.cs         # Application Entry Point
-└── appsettings.json   # Configuration Settings
-⚙️ Setup Instructions
-1. Clone Repository
+├── Components/        (Blazor UI Components)
+├── Services/          (Business Logic)
+├── ECommerceAPI/      (Backend APIs)
+├── Database/          (SQL Scripts)
+├── wwwroot/           (Static Files)
+├── Program.cs
+└── appsettings.json
+⚙️ How to Run
+1. Clone repository
 git clone https://github.com/SaadKhawer/Enterprise-Commerce-Platform.git
 2. Open in Visual Studio
+3. Configure database connection
 
-Load the solution file and restore dependencies.
-
-3. Configure Database
-
-Update connection string in:
+Edit:
 
 appsettings.json
-4. Run SQL Scripts
+4. Run SQL scripts in SSMS
+5. Run the project
 
-Execute database scripts inside SSMS from /Database folder.
+Press F5 or use:
 
-5. Run Project
-
-Start the application using IIS Express or dotnet run.
-
-📈 Future Enhancements
+dotnet run
+📈 Future Improvements
 Payment Gateway Integration (Stripe / PayPal)
-Advanced Admin Analytics Dashboard
-Email & SMS Notifications
-Role-based Access Control (RBAC)
+Email Notifications
+Advanced Admin Analytics
+Role-based Access Control
 Cloud Deployment (Azure / AWS)
 👨‍💻 Developer
 
 Saad
-Computer Science Student | Full Stack Developer (Learning Phase)
-Focused on building scalable, production-ready applications 🚀
+Computer Science Student | Full Stack Developer (Learning Phase) 🚀
 
-📌 Project Status
+⭐ Project Status
 
-✔ Functional Core System
+✔ Working Core System
 ✔ Database Integrated
-✔ API Layer Implemented
-🔄 Continuous Improvements in Progress
+✔ API Connected
+🔄 Ongoing Improvements
 
-⭐ Note
-
-This project is built for learning and portfolio purposes, showcasing full-stack development skills using modern .NET technologies.
+💡 This project is built for learning and portfolio purposes using modern .NET stack.
